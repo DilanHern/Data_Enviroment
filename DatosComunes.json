@@ -1,0 +1,912 @@
+{
+  "target_table": "DimProducto",
+  "columns": [
+    "SKU",
+    "Nombre",
+    "Categoria"
+  ],
+  "count": 180,
+  "generated_at": "2025-11-10T01:44:55.967926Z",
+  "rows": [
+    {
+      "SKU": "PRD-8608-ZW",
+      "Nombre": "Esmalte Smart",
+      "Categoria": "Belleza"
+    },
+    {
+      "SKU": "PRD-2519-MA",
+      "Nombre": "Batería Auto Smart",
+      "Categoria": "Automotriz"
+    },
+    {
+      "SKU": "PRD-6816-AP",
+      "Nombre": "Eco Esmalte",
+      "Categoria": "Belleza"
+    },
+    {
+      "SKU": "PRD-6144-FJ",
+      "Nombre": "Rápido Martillo",
+      "Categoria": "Herramientas"
+    },
+    {
+      "SKU": "PRD-4179-UK",
+      "Nombre": "Salsa Ultra",
+      "Categoria": "Alimentación"
+    },
+    {
+      "SKU": "PRD-3448-OL",
+      "Nombre": "Premium Lata",
+      "Categoria": "Alimentación"
+    },
+    {
+      "SKU": "PRD-7737-FT",
+      "Nombre": "Cuchara Max",
+      "Categoria": "Hogar"
+    },
+    {
+      "SKU": "PRD-9343-ZF",
+      "Nombre": "Compacto Auricular",
+      "Categoria": "Electrónica"
+    },
+    {
+      "SKU": "PRD-7637-JP",
+      "Nombre": "Avanzado Pack",
+      "Categoria": "Alimentación"
+    },
+    {
+      "SKU": "PRD-3090-RT",
+      "Nombre": "Eco Novela",
+      "Categoria": "Libros"
+    },
+    {
+      "SKU": "PRD-8042-EW",
+      "Nombre": "Caja Ultra",
+      "Categoria": "Alimentación"
+    },
+    {
+      "SKU": "PRD-0861-DL",
+      "Nombre": "Lámpara Max",
+      "Categoria": "Hogar"
+    },
+    {
+      "SKU": "PRD-4749-HK",
+      "Nombre": "Compacto Termómetro",
+      "Categoria": "Salud"
+    },
+    {
+      "SKU": "PRD-0171-MV",
+      "Nombre": "Botella Pro",
+      "Categoria": "Alimentación"
+    },
+    {
+      "SKU": "PRD-4183-YT",
+      "Nombre": "Premium Camiseta Sport",
+      "Categoria": "Deportes"
+    },
+    {
+      "SKU": "PRD-6399-RW",
+      "Nombre": "Cómodo Bolsa",
+      "Categoria": "Alimentación"
+    },
+    {
+      "SKU": "PRD-8238-ZU",
+      "Nombre": "Eco Neumático",
+      "Categoria": "Automotriz"
+    },
+    {
+      "SKU": "PRD-0496-IN",
+      "Nombre": "Cuchara Ultra",
+      "Categoria": "Hogar"
+    },
+    {
+      "SKU": "PRD-5301-AM",
+      "Nombre": "Eco Guía",
+      "Categoria": "Libros"
+    },
+    {
+      "SKU": "PRD-8425-IG",
+      "Nombre": "Clásico Bolígrafo",
+      "Categoria": "Oficina"
+    },
+    {
+      "SKU": "PRD-0397-XT",
+      "Nombre": "Eco Batería Auto",
+      "Categoria": "Automotriz"
+    },
+    {
+      "SKU": "PRD-9070-RV",
+      "Nombre": "Coche Ultra",
+      "Categoria": "Juguetes"
+    },
+    {
+      "SKU": "PRD-7340-XC",
+      "Nombre": "Chaqueta Ultra",
+      "Categoria": "Ropa"
+    },
+    {
+      "SKU": "PRD-6316-JQ",
+      "Nombre": "Sierra Ultra",
+      "Categoria": "Herramientas"
+    },
+    {
+      "SKU": "PRD-6646-BE",
+      "Nombre": "Mini Altavoz",
+      "Categoria": "Electrónica"
+    },
+    {
+      "SKU": "PRD-9043-RX",
+      "Nombre": "Taladro Smart",
+      "Categoria": "Herramientas"
+    },
+    {
+      "SKU": "PRD-4450-VK",
+      "Nombre": "Suplemento Ultra",
+      "Categoria": "Salud"
+    },
+    {
+      "SKU": "PRD-2209-SW",
+      "Nombre": "Cómodo Zapatilla",
+      "Categoria": "Deportes"
+    },
+    {
+      "SKU": "PRD-7819-FY",
+      "Nombre": "Eco Puzzle",
+      "Categoria": "Juguetes"
+    },
+    {
+      "SKU": "PRD-4168-ZU",
+      "Nombre": "Filtro Smart",
+      "Categoria": "Automotriz"
+    },
+    {
+      "SKU": "PRD-2205-YY",
+      "Nombre": "Rápido Guante",
+      "Categoria": "Deportes"
+    },
+    {
+      "SKU": "PRD-4653-QC",
+      "Nombre": "Set Plus",
+      "Categoria": "Belleza"
+    },
+    {
+      "SKU": "PRD-5658-JR",
+      "Nombre": "Premium Set",
+      "Categoria": "Belleza"
+    },
+    {
+      "SKU": "PRD-0229-GQ",
+      "Nombre": "Pack Plus",
+      "Categoria": "Alimentación"
+    },
+    {
+      "SKU": "PRD-9312-GR",
+      "Nombre": "Eco Filtro",
+      "Categoria": "Automotriz"
+    },
+    {
+      "SKU": "PRD-0183-IR",
+      "Nombre": "Pelota Pro",
+      "Categoria": "Deportes"
+    },
+    {
+      "SKU": "PRD-9521-WB",
+      "Nombre": "Bolsa Ultra",
+      "Categoria": "Alimentación"
+    },
+    {
+      "SKU": "PRD-3472-DP",
+      "Nombre": "Lite Novela",
+      "Categoria": "Libros"
+    },
+    {
+      "SKU": "PRD-1631-VC",
+      "Nombre": "Suplemento Smart",
+      "Categoria": "Salud"
+    },
+    {
+      "SKU": "PRD-3511-NI",
+      "Nombre": "Altavoz Plus",
+      "Categoria": "Electrónica"
+    },
+    {
+      "SKU": "PRD-5978-GS",
+      "Nombre": "Agenda Elite",
+      "Categoria": "Oficina"
+    },
+    {
+      "SKU": "PRD-8201-UN",
+      "Nombre": "Pack Elite",
+      "Categoria": "Alimentación"
+    },
+    {
+      "SKU": "PRD-4522-YV",
+      "Nombre": "Compacto Silla",
+      "Categoria": "Oficina"
+    },
+    {
+      "SKU": "PRD-2717-UT",
+      "Nombre": "Cómodo Set",
+      "Categoria": "Belleza"
+    },
+    {
+      "SKU": "PRD-5973-OA",
+      "Nombre": "Cojín Plus",
+      "Categoria": "Hogar"
+    },
+    {
+      "SKU": "PRD-3301-PA",
+      "Nombre": "Eco Chaqueta",
+      "Categoria": "Ropa"
+    },
+    {
+      "SKU": "PRD-5590-XV",
+      "Nombre": "Rápido Perfume",
+      "Categoria": "Belleza"
+    },
+    {
+      "SKU": "PRD-4736-ZG",
+      "Nombre": "Eco Silla",
+      "Categoria": "Oficina"
+    },
+    {
+      "SKU": "PRD-0929-AH",
+      "Nombre": "Rápido Crema",
+      "Categoria": "Belleza"
+    },
+    {
+      "SKU": "PRD-7985-DZ",
+      "Nombre": "Cargador Pro",
+      "Categoria": "Automotriz"
+    },
+    {
+      "SKU": "PRD-8259-GL",
+      "Nombre": "Puzzle Pro",
+      "Categoria": "Juguetes"
+    },
+    {
+      "SKU": "PRD-3719-IL",
+      "Nombre": "Compacto Masajeador",
+      "Categoria": "Salud"
+    },
+    {
+      "SKU": "PRD-1704-ET",
+      "Nombre": "Lámpara Elite",
+      "Categoria": "Hogar"
+    },
+    {
+      "SKU": "PRD-8585-LR",
+      "Nombre": "Mini Cojín",
+      "Categoria": "Hogar"
+    },
+    {
+      "SKU": "PRD-3213-IZ",
+      "Nombre": "Clásico Camiseta",
+      "Categoria": "Ropa"
+    },
+    {
+      "SKU": "PRD-1046-LZ",
+      "Nombre": "Bolígrafo Plus",
+      "Categoria": "Oficina"
+    },
+    {
+      "SKU": "PRD-2247-QX",
+      "Nombre": "Premium Llave",
+      "Categoria": "Herramientas"
+    },
+    {
+      "SKU": "PRD-3145-GT",
+      "Nombre": "Vestido Elite",
+      "Categoria": "Ropa"
+    },
+    {
+      "SKU": "PRD-8849-EP",
+      "Nombre": "Botella Pro",
+      "Categoria": "Alimentación"
+    },
+    {
+      "SKU": "PRD-8875-JR",
+      "Nombre": "Puzzle Elite",
+      "Categoria": "Juguetes"
+    },
+    {
+      "SKU": "PRD-6173-HE",
+      "Nombre": "Silla Pro",
+      "Categoria": "Oficina"
+    },
+    {
+      "SKU": "PRD-4481-DM",
+      "Nombre": "Lite Cojín",
+      "Categoria": "Hogar"
+    },
+    {
+      "SKU": "PRD-9699-QL",
+      "Nombre": "Guante Smart",
+      "Categoria": "Deportes"
+    },
+    {
+      "SKU": "PRD-9475-WD",
+      "Nombre": "Cámara Max",
+      "Categoria": "Electrónica"
+    },
+    {
+      "SKU": "PRD-3084-CJ",
+      "Nombre": "Clásico Tablet",
+      "Categoria": "Electrónica"
+    },
+    {
+      "SKU": "PRD-3970-GY",
+      "Nombre": "Lámpara Ultra",
+      "Categoria": "Hogar"
+    },
+    {
+      "SKU": "PRD-0693-FA",
+      "Nombre": "Esmalte Pro",
+      "Categoria": "Belleza"
+    },
+    {
+      "SKU": "PRD-7342-MI",
+      "Nombre": "Rápido Pantalón",
+      "Categoria": "Ropa"
+    },
+    {
+      "SKU": "PRD-5455-YL",
+      "Nombre": "Avanzado Sartén",
+      "Categoria": "Hogar"
+    },
+    {
+      "SKU": "PRD-7665-AD",
+      "Nombre": "Lata Ultra",
+      "Categoria": "Alimentación"
+    },
+    {
+      "SKU": "PRD-9433-GR",
+      "Nombre": "Clásico Batería Auto",
+      "Categoria": "Automotriz"
+    },
+    {
+      "SKU": "PRD-6289-LZ",
+      "Nombre": "Novela Ultra",
+      "Categoria": "Libros"
+    },
+    {
+      "SKU": "PRD-9883-OR",
+      "Nombre": "Clásico Termómetro",
+      "Categoria": "Salud"
+    },
+    {
+      "SKU": "PRD-9803-NO",
+      "Nombre": "Mini Llave",
+      "Categoria": "Herramientas"
+    },
+    {
+      "SKU": "PRD-1481-OK",
+      "Nombre": "Perfume Plus",
+      "Categoria": "Belleza"
+    },
+    {
+      "SKU": "PRD-2570-VP",
+      "Nombre": "Avanzado Manual",
+      "Categoria": "Libros"
+    },
+    {
+      "SKU": "PRD-7911-DT",
+      "Nombre": "Cómodo Martillo",
+      "Categoria": "Herramientas"
+    },
+    {
+      "SKU": "PRD-3784-CX",
+      "Nombre": "Agenda Ultra",
+      "Categoria": "Oficina"
+    },
+    {
+      "SKU": "PRD-8471-IK",
+      "Nombre": "Clásico Carpeta",
+      "Categoria": "Oficina"
+    },
+    {
+      "SKU": "PRD-2748-QO",
+      "Nombre": "Mini Martillo",
+      "Categoria": "Herramientas"
+    },
+    {
+      "SKU": "PRD-8625-ST",
+      "Nombre": "Pelota Smart",
+      "Categoria": "Juguetes"
+    },
+    {
+      "SKU": "PRD-4420-FF",
+      "Nombre": "Guía Max",
+      "Categoria": "Libros"
+    },
+    {
+      "SKU": "PRD-3776-UP",
+      "Nombre": "Clásico Calcetín",
+      "Categoria": "Ropa"
+    },
+    {
+      "SKU": "PRD-5655-RD",
+      "Nombre": "Compacto Pelota",
+      "Categoria": "Juguetes"
+    },
+    {
+      "SKU": "PRD-9556-UQ",
+      "Nombre": "Lámpara Elite",
+      "Categoria": "Hogar"
+    },
+    {
+      "SKU": "PRD-5672-UO",
+      "Nombre": "Bolsa Max",
+      "Categoria": "Alimentación"
+    },
+    {
+      "SKU": "PRD-8576-ZR",
+      "Nombre": "Rápido Sartén",
+      "Categoria": "Hogar"
+    },
+    {
+      "SKU": "PRD-1278-BQ",
+      "Nombre": "Lite Carpeta",
+      "Categoria": "Oficina"
+    },
+    {
+      "SKU": "PRD-2588-OK",
+      "Nombre": "Mini Perfume",
+      "Categoria": "Belleza"
+    },
+    {
+      "SKU": "PRD-6226-DI",
+      "Nombre": "Lite Set",
+      "Categoria": "Belleza"
+    },
+    {
+      "SKU": "PRD-1374-CH",
+      "Nombre": "Termómetro Max",
+      "Categoria": "Salud"
+    },
+    {
+      "SKU": "PRD-5830-BM",
+      "Nombre": "Bolsa Max",
+      "Categoria": "Alimentación"
+    },
+    {
+      "SKU": "PRD-7316-TQ",
+      "Nombre": "Clásico Lata",
+      "Categoria": "Alimentación"
+    },
+    {
+      "SKU": "PRD-7860-GS",
+      "Nombre": "Compacto Muñeco",
+      "Categoria": "Juguetes"
+    },
+    {
+      "SKU": "PRD-4082-QM",
+      "Nombre": "Router Pro",
+      "Categoria": "Electrónica"
+    },
+    {
+      "SKU": "PRD-8193-AR",
+      "Nombre": "Muñeco Max",
+      "Categoria": "Juguetes"
+    },
+    {
+      "SKU": "PRD-6013-WW",
+      "Nombre": "Pelota Ultra",
+      "Categoria": "Deportes"
+    },
+    {
+      "SKU": "PRD-0559-LO",
+      "Nombre": "Masajeador Smart",
+      "Categoria": "Salud"
+    },
+    {
+      "SKU": "PRD-3986-ZR",
+      "Nombre": "Lite Lámpara",
+      "Categoria": "Hogar"
+    },
+    {
+      "SKU": "PRD-4797-YB",
+      "Nombre": "Rápido Kit",
+      "Categoria": "Salud"
+    },
+    {
+      "SKU": "PRD-3781-QN",
+      "Nombre": "Cuchara Plus",
+      "Categoria": "Hogar"
+    },
+    {
+      "SKU": "PRD-3878-OT",
+      "Nombre": "Agenda Plus",
+      "Categoria": "Oficina"
+    },
+    {
+      "SKU": "PRD-0421-KA",
+      "Nombre": "Muñeco Ultra",
+      "Categoria": "Juguetes"
+    },
+    {
+      "SKU": "PRD-3421-VD",
+      "Nombre": "Agenda Ultra",
+      "Categoria": "Oficina"
+    },
+    {
+      "SKU": "PRD-3034-VE",
+      "Nombre": "Lata Plus",
+      "Categoria": "Alimentación"
+    },
+    {
+      "SKU": "PRD-1330-UC",
+      "Nombre": "Taladro Elite",
+      "Categoria": "Herramientas"
+    },
+    {
+      "SKU": "PRD-9137-UJ",
+      "Nombre": "Avanzado Chaqueta",
+      "Categoria": "Ropa"
+    },
+    {
+      "SKU": "PRD-5593-XB",
+      "Nombre": "Silla Ultra",
+      "Categoria": "Oficina"
+    },
+    {
+      "SKU": "PRD-9263-NS",
+      "Nombre": "Eco Termómetro",
+      "Categoria": "Salud"
+    },
+    {
+      "SKU": "PRD-4369-GF",
+      "Nombre": "Cómodo Carpeta",
+      "Categoria": "Oficina"
+    },
+    {
+      "SKU": "PRD-4000-VT",
+      "Nombre": "Cómodo Manual",
+      "Categoria": "Libros"
+    },
+    {
+      "SKU": "PRD-3046-VO",
+      "Nombre": "Auricular Smart",
+      "Categoria": "Electrónica"
+    },
+    {
+      "SKU": "PRD-7742-JN",
+      "Nombre": "Cojín Plus",
+      "Categoria": "Hogar"
+    },
+    {
+      "SKU": "PRD-8562-EQ",
+      "Nombre": "Rápido Libro",
+      "Categoria": "Libros"
+    },
+    {
+      "SKU": "PRD-0404-OI",
+      "Nombre": "Mini Libro",
+      "Categoria": "Libros"
+    },
+    {
+      "SKU": "PRD-0822-HH",
+      "Nombre": "Eco Sierra",
+      "Categoria": "Herramientas"
+    },
+    {
+      "SKU": "PRD-6607-LH",
+      "Nombre": "Cómodo Botella",
+      "Categoria": "Alimentación"
+    },
+    {
+      "SKU": "PRD-1159-XH",
+      "Nombre": "Muñeco Max",
+      "Categoria": "Juguetes"
+    },
+    {
+      "SKU": "PRD-2901-MO",
+      "Nombre": "Esmalte Max",
+      "Categoria": "Belleza"
+    },
+    {
+      "SKU": "PRD-4366-FW",
+      "Nombre": "Eco Libro",
+      "Categoria": "Libros"
+    },
+    {
+      "SKU": "PRD-4555-FZ",
+      "Nombre": "Chaqueta Plus",
+      "Categoria": "Ropa"
+    },
+    {
+      "SKU": "PRD-5635-ZB",
+      "Nombre": "Clásico Cuchara",
+      "Categoria": "Hogar"
+    },
+    {
+      "SKU": "PRD-4476-YL",
+      "Nombre": "Router Max",
+      "Categoria": "Electrónica"
+    },
+    {
+      "SKU": "PRD-6212-NE",
+      "Nombre": "Lámpara Elite",
+      "Categoria": "Hogar"
+    },
+    {
+      "SKU": "PRD-7848-IV",
+      "Nombre": "Suplemento Elite",
+      "Categoria": "Salud"
+    },
+    {
+      "SKU": "PRD-9884-AY",
+      "Nombre": "Clásico Perfume",
+      "Categoria": "Belleza"
+    },
+    {
+      "SKU": "PRD-4511-ZI",
+      "Nombre": "Guía Smart",
+      "Categoria": "Libros"
+    },
+    {
+      "SKU": "PRD-6368-RF",
+      "Nombre": "Cojín Smart",
+      "Categoria": "Hogar"
+    },
+    {
+      "SKU": "PRD-2376-OZ",
+      "Nombre": "Kit Plus",
+      "Categoria": "Salud"
+    },
+    {
+      "SKU": "PRD-0832-OI",
+      "Nombre": "Pelota Plus",
+      "Categoria": "Deportes"
+    },
+    {
+      "SKU": "PRD-5782-UF",
+      "Nombre": "Salsa Pro",
+      "Categoria": "Alimentación"
+    },
+    {
+      "SKU": "PRD-9455-GN",
+      "Nombre": "Compacto Caja",
+      "Categoria": "Alimentación"
+    },
+    {
+      "SKU": "PRD-1993-GM",
+      "Nombre": "Mini Cargador",
+      "Categoria": "Automotriz"
+    },
+    {
+      "SKU": "PRD-4416-MJ",
+      "Nombre": "Camiseta Pro",
+      "Categoria": "Ropa"
+    },
+    {
+      "SKU": "PRD-1585-GZ",
+      "Nombre": "Eco Novela",
+      "Categoria": "Libros"
+    },
+    {
+      "SKU": "PRD-5494-XU",
+      "Nombre": "Premium Vestido",
+      "Categoria": "Ropa"
+    },
+    {
+      "SKU": "PRD-8752-JB",
+      "Nombre": "Set Max",
+      "Categoria": "Belleza"
+    },
+    {
+      "SKU": "PRD-6582-LT",
+      "Nombre": "Cómodo Martillo",
+      "Categoria": "Herramientas"
+    },
+    {
+      "SKU": "PRD-0408-IB",
+      "Nombre": "Eco Cuchara",
+      "Categoria": "Hogar"
+    },
+    {
+      "SKU": "PRD-1725-BE",
+      "Nombre": "Clásico Monitor",
+      "Categoria": "Electrónica"
+    },
+    {
+      "SKU": "PRD-9444-CU",
+      "Nombre": "Avanzado Bolsa",
+      "Categoria": "Alimentación"
+    },
+    {
+      "SKU": "PRD-8033-YM",
+      "Nombre": "Rápido Carpeta",
+      "Categoria": "Oficina"
+    },
+    {
+      "SKU": "PRD-0201-FS",
+      "Nombre": "Premium Llave",
+      "Categoria": "Herramientas"
+    },
+    {
+      "SKU": "PRD-1671-JV",
+      "Nombre": "Premium Sartén",
+      "Categoria": "Hogar"
+    },
+    {
+      "SKU": "PRD-5433-TW",
+      "Nombre": "Muñeco Pro",
+      "Categoria": "Juguetes"
+    },
+    {
+      "SKU": "PRD-8173-BF",
+      "Nombre": "Eco Calcetín",
+      "Categoria": "Ropa"
+    },
+    {
+      "SKU": "PRD-8028-FI",
+      "Nombre": "Eco Pack",
+      "Categoria": "Alimentación"
+    },
+    {
+      "SKU": "PRD-5662-EL",
+      "Nombre": "Chaqueta Plus",
+      "Categoria": "Ropa"
+    },
+    {
+      "SKU": "PRD-5992-CZ",
+      "Nombre": "Pelota Ultra",
+      "Categoria": "Deportes"
+    },
+    {
+      "SKU": "PRD-3628-PR",
+      "Nombre": "Neumático Ultra",
+      "Categoria": "Automotriz"
+    },
+    {
+      "SKU": "PRD-2819-LG",
+      "Nombre": "Eco Batería",
+      "Categoria": "Electrónica"
+    },
+    {
+      "SKU": "PRD-9584-YR",
+      "Nombre": "Premium Novela",
+      "Categoria": "Libros"
+    },
+    {
+      "SKU": "PRD-9397-JV",
+      "Nombre": "Eco Llave",
+      "Categoria": "Herramientas"
+    },
+    {
+      "SKU": "PRD-0896-BN",
+      "Nombre": "Sudadera Ultra",
+      "Categoria": "Ropa"
+    },
+    {
+      "SKU": "PRD-9640-NE",
+      "Nombre": "Bloques Plus",
+      "Categoria": "Juguetes"
+    },
+    {
+      "SKU": "PRD-7055-KI",
+      "Nombre": "Botella Plus",
+      "Categoria": "Alimentación"
+    },
+    {
+      "SKU": "PRD-7100-BH",
+      "Nombre": "Avanzado Manual",
+      "Categoria": "Libros"
+    },
+    {
+      "SKU": "PRD-2038-TV",
+      "Nombre": "Compacto Suplemento",
+      "Categoria": "Salud"
+    },
+    {
+      "SKU": "PRD-1424-SC",
+      "Nombre": "Lite Camiseta Sport",
+      "Categoria": "Deportes"
+    },
+    {
+      "SKU": "PRD-6988-TH",
+      "Nombre": "Puzzle Smart",
+      "Categoria": "Juguetes"
+    },
+    {
+      "SKU": "PRD-8170-DN",
+      "Nombre": "Compacto Cámara",
+      "Categoria": "Electrónica"
+    },
+    {
+      "SKU": "PRD-5393-TI",
+      "Nombre": "Premium Novela",
+      "Categoria": "Libros"
+    },
+    {
+      "SKU": "PRD-5248-MR",
+      "Nombre": "Clásico Kit",
+      "Categoria": "Salud"
+    },
+    {
+      "SKU": "PRD-5016-CY",
+      "Nombre": "Taladro Elite",
+      "Categoria": "Herramientas"
+    },
+    {
+      "SKU": "PRD-2336-SH",
+      "Nombre": "Clásico Suplemento",
+      "Categoria": "Salud"
+    },
+    {
+      "SKU": "PRD-8330-XY",
+      "Nombre": "Eco Pack",
+      "Categoria": "Alimentación"
+    },
+    {
+      "SKU": "PRD-1845-LV",
+      "Nombre": "Clásico Carpeta",
+      "Categoria": "Oficina"
+    },
+    {
+      "SKU": "PRD-8977-OD",
+      "Nombre": "Compacto Coche",
+      "Categoria": "Juguetes"
+    },
+    {
+      "SKU": "PRD-1442-DR",
+      "Nombre": "Compacto Bolígrafo",
+      "Categoria": "Oficina"
+    },
+    {
+      "SKU": "PRD-0479-KI",
+      "Nombre": "Silla Smart",
+      "Categoria": "Oficina"
+    },
+    {
+      "SKU": "PRD-2142-ZX",
+      "Nombre": "Caja Max",
+      "Categoria": "Alimentación"
+    },
+    {
+      "SKU": "PRD-6812-LQ",
+      "Nombre": "Kit Smart",
+      "Categoria": "Salud"
+    },
+    {
+      "SKU": "PRD-1892-DX",
+      "Nombre": "Eco Manual",
+      "Categoria": "Libros"
+    },
+    {
+      "SKU": "PRD-9136-BN",
+      "Nombre": "Clásico Calcetín",
+      "Categoria": "Ropa"
+    },
+    {
+      "SKU": "PRD-8154-SO",
+      "Nombre": "Cómodo Manual",
+      "Categoria": "Libros"
+    },
+    {
+      "SKU": "PRD-3557-TS",
+      "Nombre": "Mini Camiseta Sport",
+      "Categoria": "Deportes"
+    },
+    {
+      "SKU": "PRD-7950-GB",
+      "Nombre": "Rápido Carpeta",
+      "Categoria": "Oficina"
+    },
+    {
+      "SKU": "PRD-5941-MM",
+      "Nombre": "Carpeta Pro",
+      "Categoria": "Oficina"
+    },
+    {
+      "SKU": "PRD-9890-RL",
+      "Nombre": "Calcetín Plus",
+      "Categoria": "Ropa"
+    },
+    {
+      "SKU": "PRD-7017-RY",
+      "Nombre": "Premium Libro",
+      "Categoria": "Libros"
+    }
+  ]
+}
