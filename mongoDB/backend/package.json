@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node src/index.js",
     "dev": "nodemon src/index.js",
-    "seed": "node temp/seeding.js",
+    "seed": "node data/seeding.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
