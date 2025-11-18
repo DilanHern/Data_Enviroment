@@ -25,10 +25,6 @@ class BCCRExchangeRate:
         self.database = os.getenv("databaseenv", "DW_VENTAS")
         self.username = os.getenv("usernameenv")
         self.password = os.getenv("passwordenv")
-        
-        
-        self.schedule_hour = int(os.getenv("SCHEDULE_HOUR", "5"))  # default: 5 AM
-        self.schedule_minute = int(os.getenv("SCHEDULE_MINUTE", "0"))  # 5:00
      
     
         if platform.system() == "Windows":
@@ -41,9 +37,7 @@ class BCCRExchangeRate:
         self.indicador = "317"  # compra del dolar
     
     def get_exchange_rate_data(self, start_date, end_date):
-        """
-        Obtiene datos de tipo de cambio del BCCR usando API SOAP
-        """
+
        
         soap_body = f"""<?xml version="1.0" encoding="utf-8"?>
 <soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
@@ -111,9 +105,6 @@ class BCCRExchangeRate:
             return []
     
     def connect_to_database(self):
-        """
-        Conecta a la base de datos SQL Server usando variables de entorno
-        """
         try:
             if self.username and self.password:
                 
@@ -145,9 +136,6 @@ class BCCRExchangeRate:
             return None
     
     def update_dim_tiempo_exchange_rate(self, fecha, tipo_cambio):
-        """
-        Actualiza el tipo de cambio en DimTiempo para una fecha específica
-        """
         connection = self.connect_to_database()
         if not connection:
             return False
@@ -186,9 +174,7 @@ class BCCRExchangeRate:
             connection.close()
     
     def populate_historical_data(self):
-        """
-        Poblar datos históricos de los últimos 3 años
-        """
+
         end_date = datetime.date.today()
         start_date = end_date - datetime.timedelta(days=3*365)  # 3 años antes 
         
@@ -214,15 +200,11 @@ class BCCRExchangeRate:
         
         logging.info("Población de datos históricos completada")
     
-    def update_daily_rate(self):
-        """
-        Actualiza el tipo de cambio del día actual
-        """
+    def update_current_rate(self):
         today = datetime.date.today()
         yesterday = today - datetime.timedelta(days=1)
         
         logging.info(f"Actualizando tipo de cambio para {today}")
-        
         
         exchange_rates = self.get_exchange_rate_data(yesterday, today)
         
@@ -237,19 +219,15 @@ class BCCRExchangeRate:
             logging.warning("No se pudo obtener el tipo de cambio actual")
     
     def start_scheduler(self, custom_hour=None, custom_minute=None):
-        """
-        Job programable que actualiza el tipo de cambio cada día a la hora configurada
-        Args:
-            custom_hour: Hora personalizada (0-23), si no se especifica usa la configuración
-            custom_minute: Minuto personalizado (0-59), si no se especifica usa la configuración
-        """
-        import threading
+
+        import subprocess
+        import sys
         
+ 
+        target_hour = custom_hour if custom_hour is not None else 5  # 5:00 am si no se indica lo contrario
+        target_minute = custom_minute if custom_minute is not None else 0
         
-        target_hour = custom_hour if custom_hour is not None else self.schedule_hour
-        target_minute = custom_minute if custom_minute is not None else self.schedule_minute
-        
-    
+       
         if not (0 <= target_hour <= 23):
             logging.error(f"Hora inválida: {target_hour}. Debe estar entre 0-23")
             return
@@ -257,63 +235,149 @@ class BCCRExchangeRate:
             logging.error(f"Minuto inválido: {target_minute}. Debe estar entre 0-59")
             return
         
-        def daily_update():
-            last_execution_date = None
-            while True:
-                now = datetime.datetime.now()
-                current_date = now.date()
-                
-                
-                if (now.hour == target_hour and 
-                    now.minute == target_minute and 
-                    last_execution_date != current_date):
-                    
-                    logging.info(f"Ejecutando actualización programada ({target_hour:02d}:{target_minute:02d})...")
-                    self.update_daily_rate()
-                    last_execution_date = current_date
-                    time.sleep(60)  
-                else:
-                    time.sleep(30) 
+
+        script_path = os.path.abspath(__file__)
+        python_path = sys.executable
         
+        if platform.system() == "Windows":
+            self._create_windows_task(target_hour, target_minute, python_path, script_path)
+        else:
+            self._create_unix_cron(target_hour, target_minute, python_path, script_path)
+    
+    def _create_windows_task(self, hour, minute, python_path, script_path):
+        import subprocess
         
-        thread = threading.Thread(target=daily_update, daemon=True)
-        thread.start()
-        
-        logging.info(f"Job iniciado. Actualizaciones programadas para las {target_hour:02d}:{target_minute:02d}")
-        
+        task_name = "BCCR_Exchange_Rate_Update"
         
         try:
-            while True:
-                time.sleep(60)
-        except KeyboardInterrupt:
-            logging.info("Job detenido por el usuario")
+            # si ya exsiste la borra
+            subprocess.run([
+                "schtasks", "/delete", "/tn", task_name, "/f"
+            ], capture_output=True, text=True)
+            
+            # nueva tarea 
+            command = f'"{python_path}" "{script_path}" update-current'
+            time_str = f"{hour:02d}:{minute:02d}"
+            
+            result = subprocess.run([
+                "schtasks", "/create",
+                "/tn", task_name,
+                "/tr", command,
+                "/sc", "daily",
+                "/st", time_str,
+                "/ru", "SYSTEM",
+                "/rl", "HIGHEST"
+            ], capture_output=True, text=True)
+            
+            if result.returncode == 0:
+                logging.info(f" Job creado para las {hour:02d}:{minute:02d}")
 
-    def test_connection(self):
-        """
-        Prueba la conexión a la base de datos
-        """
-        logging.info("Probando conexión a base de datos...")
-        connection = self.connect_to_database()
-        if connection:
-            try:
-                cursor = connection.cursor()
-                cursor.execute("SELECT COUNT(*) FROM DimTiempo")
-                count = cursor.fetchone()[0]
-                logging.info(f"Conexión exitosa. Registros en DimTiempo: {count}")
-                return True
-            except Exception as e:
-                logging.error(f"Error consultando DimTiempo: {e}")
-                return False
-            finally:
-                connection.close()
+            else:
+                logging.error(f"Error creando tarea de Windows: {result.stderr}")
+                
+        except Exception as e:
+            logging.error(f"Error configurando Task Scheduler: {e}")
+    
+    def _create_unix_cron(self, hour, minute, python_path, script_path):
+        import subprocess
+        import tempfile
+        
+        try:
+            # ver los jobs que tengo
+            result = subprocess.run(["crontab", "-l"], capture_output=True, text=True)
+            current_cron = result.stdout if result.returncode == 0 else ""
+            
+            # crear nueva línea
+            cron_line = f"{minute} {hour} * * * {python_path} {script_path} update-current\n"
+            cron_comment = "# BCCR Exchange Rate Update\n"
+            
+            # quitamos jobs que corran el mismo script
+            lines = current_cron.split('\n')
+            filtered_lines = [line for line in lines 
+                            if not (script_path in line and 'update-current' in line)]
+            
+            #  nuevo job
+            new_cron = '\n'.join(filtered_lines).strip()
+            if new_cron:
+                new_cron += '\n'
+            new_cron += cron_comment + cron_line
+            
+            #  nuevo crontab
+            with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.cron') as f:
+                f.write(new_cron)
+                temp_file = f.name
+            
+            result = subprocess.run(["crontab", temp_file], capture_output=True, text=True)
+            os.unlink(temp_file) 
+            
+            if result.returncode == 0:
+                logging.info(f" Job creado para las {hour:02d}:{minute:02d}")
+            else:
+                logging.error(f"Error creando cron job: {result.stderr}")
+                
+        except Exception as e:
+            logging.error(f"Error configurando cron: {e}")
+    
+    def remove_scheduler(self):
+        if platform.system() == "Windows":
+            self._remove_windows_task()
         else:
-            logging.error("No se pudo conectar a la base de datos")
-            return False
+            self._remove_unix_cron()
+    
+    def _remove_windows_task(self):
+        import subprocess
+        
+        task_name = "BCCR_Exchange_Rate_Update"
+        
+        try:
+            result = subprocess.run([
+                "schtasks", "/delete", "/tn", task_name, "/f"
+            ], capture_output=True, text=True)
+            
+            if result.returncode == 0:
+                logging.info(f" Tarea de Windows eliminada: '{task_name}'")
+            else:
+                logging.warning(f"La tarea '{task_name}' no existía o no se pudo eliminar")
+                
+        except Exception as e:
+            logging.error(f"Error eliminando tarea de Windows: {e}")
+    
+    def _remove_unix_cron(self):
+        import subprocess
+        import tempfile
+        
+        try:
+            result = subprocess.run(["crontab", "-l"], capture_output=True, text=True)
+            current_cron = result.stdout if result.returncode == 0 else ""
+            
+            lines = current_cron.split('\n')
+            filtered_lines = []
+            script_path = os.path.abspath(__file__)
+            
+            for line in lines:
+                if not (script_path in line and 'update-current' in line):
+                    if not line.strip().startswith('# BCCR Exchange Rate Update'):
+                        filtered_lines.append(line)
+            
+            new_cron = '\n'.join(filtered_lines).strip()
+            
+            with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.cron') as f:
+                f.write(new_cron + '\n' if new_cron else '')
+                temp_file = f.name
+            
+            result = subprocess.run(["crontab", temp_file], capture_output=True, text=True)
+            os.unlink(temp_file)
+            
+            if result.returncode == 0:
+                logging.info(f" Cron job de BCCR eliminado")
+            else:
+                logging.error(f"Error eliminando cron job: {result.stderr}")
+                
+        except Exception as e:
+            logging.error(f"Error eliminando cron: {e}")
 
 def main():
-    """
-    Función principal
-    """
+
     import sys
     
     bccr = BCCRExchangeRate()
@@ -321,42 +385,32 @@ def main():
     if len(sys.argv) > 1:
         command = sys.argv[1]
         
-        if command == "test":
-            # Probar conexión a base de datos
-            bccr.test_connection()
-        elif command == "populate":
-            # Poblar datos históricos
+        if command == "populate":
             bccr.populate_historical_data()
-        elif command == "update":
-            # Actualizar tipo de cambio diario
-            bccr.update_daily_rate()
+        elif command == "update-current":
+            bccr.update_current_rate()
         elif command == "scheduler":
-            # Iniciar programador (con hora opcional)
             if len(sys.argv) >= 3:
-                # Formato: scheduler HH:MM o scheduler HH
                 time_arg = sys.argv[2]
                 try:
                     if ":" in time_arg:
                         hour, minute = map(int, time_arg.split(":"))
                         bccr.start_scheduler(custom_hour=hour, custom_minute=minute)
                     else:
-                        hour = int(time_arg)
-                        bccr.start_scheduler(custom_hour=hour, custom_minute=0)
+                        print("Use formato HH:MM")
                 except ValueError:
-                    print("Error: Formato de hora inválido. Use HH:MM o HH")
-                    print("Ejemplo: scheduler 05:30 o scheduler 5")
+                    print("Use formato HH:MM")
             else:
                 bccr.start_scheduler()
+        elif command == "remove-scheduler":
+            bccr.remove_scheduler()
         else:
-            print("Comandos disponibles: test, populate, update, scheduler")
+            print("Comandos disponibles: populate, scheduler, remove-scheduler")
     else:
-        print("Uso:")
-        print("  python bccr_exchange_rate.py test                # Probar conexión a base de datos")
-        print("  python bccr_exchange_rate.py populate            # Poblar datos históricos (3 años)")
-        print("  python bccr_exchange_rate.py update              # Actualizar tipo de cambio actual")
-        print("  python bccr_exchange_rate.py scheduler           # Iniciar programador (5 am)")
-        print("  python bccr_exchange_rate.py scheduler HH:MM     # Iniciar programador (hora específica)")
-        print("  python bccr_exchange_rate.py scheduler HH        # Iniciar programador (hora:00)")
+        print("  python bccr_exchange_rate.py populate")
+        print("  python bccr_exchange_rate.py scheduler") # por default 5 am
+        print("  python bccr_exchange_rate.py scheduler HH:MM") 
+        print("  python bccr_exchange_rate.py remove-scheduler")
 
 if __name__ == "__main__":
     main()
