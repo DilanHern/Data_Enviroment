@@ -75,3 +75,12 @@ CREATE TABLE MetaVentas (
         REFERENCES DimCliente(IdCliente)
 );
 GO
+
+-- TABLA EQUIVALENCIAS
+CREATE TABLE Equivalencias (
+    Id INT IDENTITY(1,1) PRIMARY KEY,
+    SKU VARCHAR(10) NULL,
+    CodigoMongo VARCHAR(10) NULL,
+    CodigoAlt VARCHAR(10) NULL
+);
+GO

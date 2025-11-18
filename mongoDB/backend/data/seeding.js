@@ -64,11 +64,6 @@ function generarProductos() {
       sku: item.SKU  
     };
     
-    // 50% de los de DatosComunes también tienen código alternativo
-    if (Math.random() > 0.5) {
-      equivalencias.codigo_alt = `ALT-${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
-    }
-    
     productos.push({
       codigo_mongo: `MN-${String(index + 1).padStart(4, '0')}`,
       nombre: item.Nombre,
