@@ -14,3 +14,4 @@ Instalación y ejecución del frontend (Vite + React):
 3. Correr el servidor de desarrollo:
 
 	npm run dev
+
