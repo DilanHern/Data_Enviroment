@@ -1,6 +1,6 @@
 # Tipos de Cambio BCCR y Dim Tiempo
 
-### Instalar dependencias
+### Instalar dependencias (dw -> job)
 ```bash
 # Crear entorno virtual, en windows no hace falta pueden solo instalarlo 
 python3 -m venv venv

@@ -2,11 +2,29 @@
 const mongoose = require('mongoose');
 const path = require('path');
 const fs = require('fs');
+const crypto = require('crypto');
 require('dotenv').config({ path: path.join(__dirname, '../.env') });
 
 const Cliente = require('../src/models/cliente');
 const Producto = require('../src/models/producto');
 const Orden = require('../src/models/orden');
+
+// para generar sku del codigo mongo
+function generateSkuFromMongoCode(codigoMongo) {
+  if (!codigoMongo) return null;
+  
+  if (codigoMongo.startsWith('MN-')) {
+    const numero = codigoMongo.substring(3);
+    // Generar letras basado en el número
+    const hash = crypto.createHash('md5').update(numero).digest('hex');
+    // Tomar los primeros 2 caracteres hexadecimales y convertirlos a letras A-P
+    const char1 = String.fromCharCode('A'.charCodeAt(0) + parseInt(hash[0], 16));
+    const char2 = String.fromCharCode('A'.charCodeAt(0) + parseInt(hash[1], 16));
+    return `PRD-${numero}-${char1}${char2}`;
+  } else {
+    return `PRD-${codigoMongo.replace('-', '').substring(0, 4).toUpperCase()}-XX`;
+  }
+}
 
 
 const datosComunes = JSON.parse(fs.readFileSync(path.join(__dirname, '../../../DatosComunes.json'), 'utf8'));
@@ -99,19 +117,23 @@ function generarProductos() {
   for (let i = datosComunes.rows.length; i < 250; i++) {
     const nombre = productosAdicionales[Math.floor(Math.random() * productosAdicionales.length)];
     const categoria = categoriasAdicionales[Math.floor(Math.random() * categoriasAdicionales.length)];
+    const codigoMongo = `MN-${String(i + 1).padStart(4, '0')}`;
     
     const equivalencias = {};
     // Solo 60% de los productos adicionales tienen equivalencias
     if (Math.random() > 0.4) {
-      equivalencias.sku = `SKU-${Math.random().toString(36).substr(2, 8).toUpperCase()}`;
+      // Usar función determinística para generar SKU
+      equivalencias.sku = generateSkuFromMongoCode(codigoMongo);
       
       if (Math.random() > 0.6) {
-        equivalencias.codigo_alt = `ALT-${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
+        // Para código alt también usar algo más determinístico
+        const altHash = crypto.createHash('md5').update(codigoMongo + 'ALT').digest('hex').substring(0, 6).toUpperCase();
+        equivalencias.codigo_alt = `ALT-${altHash}`;
       }
     }
     
     productos.push({
-      codigo_mongo: `MN-${String(i + 1).padStart(4, '0')}`,
+      codigo_mongo: codigoMongo,
       nombre: `${nombre} ${i}`,
       categoria: categoria,
       equivalencias: Object.keys(equivalencias).length > 0 ? equivalencias : undefined
@@ -122,14 +144,49 @@ function generarProductos() {
 }
 
 function generarFechaAleatoria(año) {
+  const hoy = new Date();
   const inicio = new Date(año, 0, 1);
-  const fin = new Date(año, 11, 31);
-  return new Date(inicio.getTime() + Math.random() * (fin.getTime() - inicio.getTime()));
+  
+  // fechas antes que ayer para que tenga sentido
+  let fin;
+  if (año === hoy.getFullYear()) {
+    fin = new Date(hoy.getTime() - 24 * 60 * 60 * 1000); 
+  } else {
+    fin = new Date(año, 11, 31);
+  }
+  
+
+  if (inicio > hoy) {
+    const añoPasado = hoy.getFullYear() - 1;
+    return new Date(añoPasado, Math.floor(Math.random() * 12), Math.floor(Math.random() * 28) + 1);
+  }
+  
+
+  if (fin >= hoy) {
+    fin = new Date(hoy.getTime() - 24 * 60 * 60 * 1000); 
+  }
+  
+  const fechaGenerada = new Date(inicio.getTime() + Math.random() * (fin.getTime() - inicio.getTime()));
+  
+  
+  if (fechaGenerada >= hoy) {
+    return new Date(hoy.getTime() - 24 * 60 * 60 * 1000); // Ayer
+  }
+  
+  return fechaGenerada;
 }
 
 function generarOrdenes(clientes, productos, cantidad) {
   const ordenes = [];
-  const años = [2023, 2024, 2025];
+  
+  const hoy = new Date();
+  const añoActual = hoy.getFullYear();
+  const años = [2023, 2024];
+  
+
+  if (añoActual === 2025 && hoy.getMonth() > 0) {
+    años.push(2025);
+  }
   
   for (let i = 0; i < cantidad; i++) {
     const cliente = clientes[Math.floor(Math.random() * clientes.length)];
