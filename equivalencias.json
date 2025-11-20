@@ -1,0 +1,1442 @@
+[
+  {
+    "Id": 1,
+    "SKU": "SKU-9668",
+    "CodigoMongo": "MN-1189",
+    "CodigoAlt": "ALT-XG52",
+    "nombre": "Teclado",
+    "categoria": "electronicos"
+  },
+  {
+    "Id": 2,
+    "SKU": "SKU-5100",
+    "CodigoMongo": "MN-1403",
+    "CodigoAlt": "ALT-QL75",
+    "nombre": "Energizante",
+    "categoria": "bebidas"
+  },
+  {
+    "Id": 3,
+    "SKU": "SKU-5041",
+    "CodigoMongo": "MN-3397",
+    "CodigoAlt": "ALT-ME67",
+    "nombre": "Jugo de Manzana",
+    "categoria": "bebidas"
+  },
+  {
+    "Id": 4,
+    "SKU": "SKU-3653",
+    "CodigoMongo": "MN-1013",
+    "CodigoAlt": "ALT-LP18",
+    "nombre": "Pasta Dental",
+    "categoria": "higiene"
+  },
+  {
+    "Id": 5,
+    "SKU": "SKU-4022",
+    "CodigoMongo": "MN-9034",
+    "CodigoAlt": "ALT-AI78",
+    "nombre": "Isotónica",
+    "categoria": "bebidas"
+  },
+  {
+    "Id": 6,
+    "SKU": "SKU-9077",
+    "CodigoMongo": "MN-5367",
+    "CodigoAlt": "ALT-RO36",
+    "nombre": "Recogedor",
+    "categoria": "limpieza"
+  },
+  {
+    "Id": 7,
+    "SKU": "SKU-8643",
+    "CodigoMongo": "MN-2275",
+    "CodigoAlt": "ALT-XD94",
+    "nombre": "Crema Corporal",
+    "categoria": "higiene"
+  },
+  {
+    "Id": 8,
+    "SKU": "SKU-2853",
+    "CodigoMongo": "MN-7097",
+    "CodigoAlt": "ALT-AX87",
+    "nombre": "Smoothie",
+    "categoria": "bebidas"
+  },
+  {
+    "Id": 9,
+    "SKU": "SKU-3739",
+    "CodigoMongo": "MN-9447",
+    "CodigoAlt": "ALT-MO71",
+    "nombre": "Cloro",
+    "categoria": "limpieza"
+  },
+  {
+    "Id": 10,
+    "SKU": "SKU-5706",
+    "CodigoMongo": "MN-1159",
+    "CodigoAlt": "ALT-VY81",
+    "nombre": "Detergente",
+    "categoria": "limpieza"
+  },
+  {
+    "Id": 11,
+    "SKU": "SKU-7988",
+    "CodigoMongo": "MN-1429",
+    "CodigoAlt": "ALT-NU74",
+    "nombre": "Toallas Húmedas",
+    "categoria": "higiene"
+  },
+  {
+    "Id": 12,
+    "SKU": "SKU-5065",
+    "CodigoMongo": "MN-6718",
+    "CodigoAlt": "ALT-QN52",
+    "nombre": "Toallas Húmedas",
+    "categoria": "higiene"
+  },
+  {
+    "Id": 13,
+    "SKU": "SKU-1033",
+    "CodigoMongo": "MN-6983",
+    "CodigoAlt": "ALT-ZN62",
+    "nombre": "Huevos",
+    "categoria": "alimentos"
+  },
+  {
+    "Id": 14,
+    "SKU": "SKU-6393",
+    "CodigoMongo": "MN-6238",
+    "CodigoAlt": "ALT-QM84",
+    "nombre": "Escoba",
+    "categoria": "limpieza"
+  },
+  {
+    "Id": 15,
+    "SKU": "SKU-1011",
+    "CodigoMongo": "MN-1854",
+    "CodigoAlt": "ALT-MT97",
+    "nombre": "Hub USB",
+    "categoria": "electronicos"
+  },
+  {
+    "Id": 16,
+    "SKU": "SKU-8979",
+    "CodigoMongo": "MN-1456",
+    "CodigoAlt": "ALT-GL80",
+    "nombre": "Gel de Baño",
+    "categoria": "higiene"
+  },
+  {
+    "Id": 17,
+    "SKU": "SKU-6724",
+    "CodigoMongo": "MN-4942",
+    "CodigoAlt": "ALT-LK82",
+    "nombre": "Yogur",
+    "categoria": "alimentos"
+  },
+  {
+    "Id": 18,
+    "SKU": "SKU-3648",
+    "CodigoMongo": "MN-2737",
+    "CodigoAlt": "ALT-DV47",
+    "nombre": "Energizante",
+    "categoria": "bebidas"
+  },
+  {
+    "Id": 19,
+    "SKU": "SKU-4634",
+    "CodigoMongo": "MN-1019",
+    "CodigoAlt": "ALT-XQ81",
+    "nombre": "Webcam",
+    "categoria": "electronicos"
+  },
+  {
+    "Id": 20,
+    "SKU": "SKU-5733",
+    "CodigoMongo": "MN-5000",
+    "CodigoAlt": "ALT-SE35",
+    "nombre": "Afeitadora",
+    "categoria": "higiene"
+  },
+  {
+    "Id": 21,
+    "SKU": "SKU-8573",
+    "CodigoMongo": "MN-5566",
+    "CodigoAlt": "ALT-BI87",
+    "nombre": "Energizante",
+    "categoria": "bebidas"
+  },
+  {
+    "Id": 22,
+    "SKU": "SKU-6189",
+    "CodigoMongo": "MN-8472",
+    "CodigoAlt": "ALT-OI69",
+    "nombre": "Protector Solar",
+    "categoria": "higiene"
+  },
+  {
+    "Id": 23,
+    "SKU": "SKU-1042",
+    "CodigoMongo": "MN-6750",
+    "CodigoAlt": "ALT-GP48",
+    "nombre": "Isotónica",
+    "categoria": "bebidas"
+  },
+  {
+    "Id": 24,
+    "SKU": "SKU-4264",
+    "CodigoMongo": "MN-5305",
+    "CodigoAlt": "ALT-SC45",
+    "nombre": "Bolsas de Basura",
+    "categoria": "limpieza"
+  },
+  {
+    "Id": 25,
+    "SKU": "SKU-3816",
+    "CodigoMongo": "MN-8308",
+    "CodigoAlt": "ALT-SK22",
+    "nombre": "Limpiador Multiuso",
+    "categoria": "limpieza"
+  },
+  {
+    "Id": 26,
+    "SKU": "SKU-8311",
+    "CodigoMongo": "MN-5159",
+    "CodigoAlt": "ALT-CI87",
+    "nombre": "Limpiador Multiuso",
+    "categoria": "limpieza"
+  },
+  {
+    "Id": 27,
+    "SKU": "SKU-9063",
+    "CodigoMongo": "MN-6512",
+    "CodigoAlt": "ALT-YA41",
+    "nombre": "Batería",
+    "categoria": "electronicos"
+  },
+  {
+    "Id": 28,
+    "SKU": "SKU-7973",
+    "CodigoMongo": "MN-7968",
+    "CodigoAlt": "ALT-DX13",
+    "nombre": "Jabón de Tocador",
+    "categoria": "higiene"
+  },
+  {
+    "Id": 29,
+    "SKU": "SKU-8420",
+    "CodigoMongo": "MN-9717",
+    "CodigoAlt": "ALT-VP47",
+    "nombre": "Mouse",
+    "categoria": "electronicos"
+  },
+  {
+    "Id": 30,
+    "SKU": "SKU-7840",
+    "CodigoMongo": "MN-2140",
+    "CodigoAlt": "ALT-BX18",
+    "nombre": "Limpiador Multiuso",
+    "categoria": "limpieza"
+  },
+  {
+    "Id": 31,
+    "SKU": "SKU-6917",
+    "CodigoMongo": "MN-5128",
+    "CodigoAlt": "ALT-QH92",
+    "nombre": "Agua Saborizada",
+    "categoria": "bebidas"
+  },
+  {
+    "Id": 32,
+    "SKU": "SKU-9879",
+    "CodigoMongo": "MN-6506",
+    "CodigoAlt": "ALT-VF85",
+    "nombre": "Protector Solar",
+    "categoria": "higiene"
+  },
+  {
+    "Id": 33,
+    "SKU": "SKU-1354",
+    "CodigoMongo": "MN-6165",
+    "CodigoAlt": "ALT-OF97",
+    "nombre": "Hub USB",
+    "categoria": "electronicos"
+  },
+  {
+    "Id": 34,
+    "SKU": "SKU-3856",
+    "CodigoMongo": "MN-7471",
+    "CodigoAlt": "ALT-VN21",
+    "nombre": "Batería",
+    "categoria": "electronicos"
+  },
+  {
+    "Id": 35,
+    "SKU": "SKU-4992",
+    "CodigoMongo": "MN-8638",
+    "CodigoAlt": "ALT-KU59",
+    "nombre": "Cerveza",
+    "categoria": "bebidas"
+  },
+  {
+    "Id": 36,
+    "SKU": "SKU-5064",
+    "CodigoMongo": "MN-2185",
+    "CodigoAlt": "ALT-TP72",
+    "nombre": "Pañuelos",
+    "categoria": "higiene"
+  },
+  {
+    "Id": 37,
+    "SKU": "SKU-5816",
+    "CodigoMongo": "MN-4982",
+    "CodigoAlt": "ALT-MP51",
+    "nombre": "Mouse",
+    "categoria": "electronicos"
+  },
+  {
+    "Id": 38,
+    "SKU": "SKU-7151",
+    "CodigoMongo": "MN-1356",
+    "CodigoAlt": "ALT-CE39",
+    "nombre": "Hilo Dental",
+    "categoria": "higiene"
+  },
+  {
+    "Id": 39,
+    "SKU": "SKU-2686",
+    "CodigoMongo": "MN-9439",
+    "CodigoAlt": "ALT-GP65",
+    "nombre": "Azúcar",
+    "categoria": "alimentos"
+  },
+  {
+    "Id": 40,
+    "SKU": "SKU-5837",
+    "CodigoMongo": "MN-3953",
+    "CodigoAlt": "ALT-KV21",
+    "nombre": "Energizante",
+    "categoria": "bebidas"
+  },
+  {
+    "Id": 41,
+    "SKU": "SKU-5428",
+    "CodigoMongo": "MN-4901",
+    "CodigoAlt": "ALT-QZ65",
+    "nombre": "Funda para Celular",
+    "categoria": "electronicos"
+  },
+  {
+    "Id": 42,
+    "SKU": "SKU-8415",
+    "CodigoMongo": "MN-1435",
+    "CodigoAlt": "ALT-DA84",
+    "nombre": "Suavizante",
+    "categoria": "limpieza"
+  },
+  {
+    "Id": 43,
+    "SKU": "SKU-3044",
+    "CodigoMongo": "MN-9104",
+    "CodigoAlt": "ALT-KU27",
+    "nombre": "Adaptador",
+    "categoria": "electronicos"
+  },
+  {
+    "Id": 44,
+    "SKU": "SKU-9395",
+    "CodigoMongo": "MN-8309",
+    "CodigoAlt": "ALT-WF25",
+    "nombre": "Hilo Dental",
+    "categoria": "higiene"
+  },
+  {
+    "Id": 45,
+    "SKU": "SKU-8684",
+    "CodigoMongo": "MN-4131",
+    "CodigoAlt": "ALT-YC11",
+    "nombre": "Pañuelos",
+    "categoria": "higiene"
+  },
+  {
+    "Id": 46,
+    "SKU": "SKU-6408",
+    "CodigoMongo": "MN-6235",
+    "CodigoAlt": "ALT-IX37",
+    "nombre": "Cargador",
+    "categoria": "electronicos"
+  },
+  {
+    "Id": 47,
+    "SKU": "SKU-6690",
+    "CodigoMongo": "MN-9435",
+    "CodigoAlt": "ALT-WZ96",
+    "nombre": "Aceite",
+    "categoria": "alimentos"
+  },
+  {
+    "Id": 48,
+    "SKU": "SKU-1734",
+    "CodigoMongo": "MN-9840",
+    "CodigoAlt": "ALT-UJ46",
+    "nombre": "Ajo",
+    "categoria": "alimentos"
+  },
+  {
+    "Id": 49,
+    "SKU": "SKU-7901",
+    "CodigoMongo": "MN-6853",
+    "CodigoAlt": "ALT-OV29",
+    "nombre": "Mouse",
+    "categoria": "electronicos"
+  },
+  {
+    "Id": 50,
+    "SKU": "SKU-8349",
+    "CodigoMongo": "MN-8811",
+    "CodigoAlt": "ALT-PP58",
+    "nombre": "Café",
+    "categoria": "alimentos"
+  },
+  {
+    "Id": 51,
+    "SKU": "SKU-2463",
+    "CodigoMongo": "MN-5817",
+    "CodigoAlt": "ALT-DE21",
+    "nombre": "Jabón de Tocador",
+    "categoria": "higiene"
+  },
+  {
+    "Id": 52,
+    "SKU": "SKU-9283",
+    "CodigoMongo": "MN-4348",
+    "CodigoAlt": "ALT-CB94",
+    "nombre": "Toallas Húmedas",
+    "categoria": "higiene"
+  },
+  {
+    "Id": 53,
+    "SKU": "SKU-9938",
+    "CodigoMongo": "MN-6723",
+    "CodigoAlt": "ALT-ZT10",
+    "nombre": "Control Remoto",
+    "categoria": "electronicos"
+  },
+  {
+    "Id": 54,
+    "SKU": "SKU-8989",
+    "CodigoMongo": "MN-8453",
+    "CodigoAlt": "ALT-BF65",
+    "nombre": "Suavizante",
+    "categoria": "limpieza"
+  },
+  {
+    "Id": 55,
+    "SKU": "SKU-5678",
+    "CodigoMongo": "MN-8987",
+    "CodigoAlt": "ALT-WP56",
+    "nombre": "Sal",
+    "categoria": "alimentos"
+  },
+  {
+    "Id": 56,
+    "SKU": "SKU-8521",
+    "CodigoMongo": "MN-5752",
+    "CodigoAlt": "ALT-CY16",
+    "nombre": "Afeitadora",
+    "categoria": "higiene"
+  },
+  {
+    "Id": 57,
+    "SKU": "SKU-3727",
+    "CodigoMongo": "MN-2572",
+    "CodigoAlt": "ALT-AU45",
+    "nombre": "Recogedor",
+    "categoria": "limpieza"
+  },
+  {
+    "Id": 58,
+    "SKU": "SKU-2960",
+    "CodigoMongo": "MN-8222",
+    "CodigoAlt": "ALT-KU24",
+    "nombre": "Parlante Bluetooth",
+    "categoria": "electronicos"
+  },
+  {
+    "Id": 59,
+    "SKU": "SKU-2560",
+    "CodigoMongo": "MN-3740",
+    "CodigoAlt": "ALT-DD65",
+    "nombre": "Enjuague Bucal",
+    "categoria": "higiene"
+  },
+  {
+    "Id": 60,
+    "SKU": "SKU-9810",
+    "CodigoMongo": "MN-3039",
+    "CodigoAlt": "ALT-BN95",
+    "nombre": "Jugo Natural",
+    "categoria": "bebidas"
+  },
+  {
+    "Id": 61,
+    "SKU": "SKU-6058",
+    "CodigoMongo": "MN-9115",
+    "CodigoAlt": "ALT-DK85",
+    "nombre": "Harina",
+    "categoria": "alimentos"
+  },
+  {
+    "Id": 62,
+    "SKU": "SKU-7042",
+    "CodigoMongo": "MN-3789",
+    "CodigoAlt": "ALT-DP26",
+    "nombre": "Hub USB",
+    "categoria": "electronicos"
+  },
+  {
+    "Id": 63,
+    "SKU": "SKU-8574",
+    "CodigoMongo": "MN-2498",
+    "CodigoAlt": "ALT-HF23",
+    "nombre": "Jugo Natural",
+    "categoria": "bebidas"
+  },
+  {
+    "Id": 64,
+    "SKU": "SKU-2110",
+    "CodigoMongo": "MN-7398",
+    "CodigoAlt": "ALT-EV52",
+    "nombre": "Manzana",
+    "categoria": "alimentos"
+  },
+  {
+    "Id": 65,
+    "SKU": "SKU-4591",
+    "CodigoMongo": "MN-6125",
+    "CodigoAlt": "ALT-OT19",
+    "nombre": "Detergente",
+    "categoria": "limpieza"
+  },
+  {
+    "Id": 66,
+    "SKU": "SKU-5963",
+    "CodigoMongo": "MN-3780",
+    "CodigoAlt": "ALT-VJ55",
+    "nombre": "Champú",
+    "categoria": "higiene"
+  },
+  {
+    "Id": 67,
+    "SKU": "SKU-4228",
+    "CodigoMongo": "MN-4146",
+    "CodigoAlt": "ALT-LU32",
+    "nombre": "Papel Higiénico",
+    "categoria": "higiene"
+  },
+  {
+    "Id": 68,
+    "SKU": "SKU-4396",
+    "CodigoMongo": "MN-4977",
+    "CodigoAlt": "ALT-GV82",
+    "nombre": "Detergente",
+    "categoria": "limpieza"
+  },
+  {
+    "Id": 69,
+    "SKU": "SKU-6132",
+    "CodigoMongo": "MN-6520",
+    "CodigoAlt": "ALT-YW44",
+    "nombre": "Suavizante",
+    "categoria": "limpieza"
+  },
+  {
+    "Id": 70,
+    "SKU": "SKU-2747",
+    "CodigoMongo": "MN-7979",
+    "CodigoAlt": "ALT-EP63",
+    "nombre": "Control Remoto",
+    "categoria": "electronicos"
+  },
+  {
+    "Id": 71,
+    "SKU": "SKU-7881",
+    "CodigoMongo": "MN-9856",
+    "CodigoAlt": "ALT-JJ11",
+    "nombre": "Cable USB",
+    "categoria": "electronicos"
+  },
+  {
+    "Id": 72,
+    "SKU": "SKU-5746",
+    "CodigoMongo": "MN-9548",
+    "CodigoAlt": "ALT-KC61",
+    "nombre": "Esponja",
+    "categoria": "limpieza"
+  },
+  {
+    "Id": 73,
+    "SKU": "SKU-4641",
+    "CodigoMongo": "MN-9508",
+    "CodigoAlt": "ALT-EI49",
+    "nombre": "Limonada",
+    "categoria": "bebidas"
+  },
+  {
+    "Id": 74,
+    "SKU": "SKU-7938",
+    "CodigoMongo": "MN-2890",
+    "CodigoAlt": "ALT-TS72",
+    "nombre": "Leche",
+    "categoria": "alimentos"
+  },
+  {
+    "Id": 75,
+    "SKU": "SKU-1096",
+    "CodigoMongo": "MN-6026",
+    "CodigoAlt": "ALT-FP60",
+    "nombre": "Café",
+    "categoria": "alimentos"
+  },
+  {
+    "Id": 76,
+    "SKU": "SKU-2037",
+    "CodigoMongo": "MN-4970",
+    "CodigoAlt": "ALT-ON68",
+    "nombre": "Pan",
+    "categoria": "alimentos"
+  },
+  {
+    "Id": 77,
+    "SKU": "SKU-2818",
+    "CodigoMongo": "MN-3472",
+    "CodigoAlt": "ALT-GJ64",
+    "nombre": "Webcam",
+    "categoria": "electronicos"
+  },
+  {
+    "Id": 78,
+    "SKU": "SKU-1222",
+    "CodigoMongo": "MN-6533",
+    "CodigoAlt": "ALT-LL32",
+    "nombre": "Limpiavidrios",
+    "categoria": "limpieza"
+  },
+  {
+    "Id": 79,
+    "SKU": "SKU-7654",
+    "CodigoMongo": "MN-8556",
+    "CodigoAlt": "ALT-SG97",
+    "nombre": "Toallas Húmedas",
+    "categoria": "higiene"
+  },
+  {
+    "Id": 80,
+    "SKU": "SKU-9790",
+    "CodigoMongo": "MN-1361",
+    "CodigoAlt": "ALT-OR44",
+    "nombre": "Zanahoria",
+    "categoria": "alimentos"
+  },
+  {
+    "Id": 81,
+    "SKU": "SKU-1998",
+    "CodigoMongo": "MN-4850",
+    "CodigoAlt": "ALT-GU39",
+    "nombre": "Trapeador",
+    "categoria": "limpieza"
+  },
+  {
+    "Id": 82,
+    "SKU": "SKU-4797",
+    "CodigoMongo": "MN-6291",
+    "CodigoAlt": "ALT-OU99",
+    "nombre": "Afeitadora",
+    "categoria": "higiene"
+  },
+  {
+    "Id": 83,
+    "SKU": "SKU-6116",
+    "CodigoMongo": "MN-5545",
+    "CodigoAlt": "ALT-QJ56",
+    "nombre": "Té Helado",
+    "categoria": "bebidas"
+  },
+  {
+    "Id": 84,
+    "SKU": "SKU-8064",
+    "CodigoMongo": "MN-8265",
+    "CodigoAlt": "ALT-QH97",
+    "nombre": "Trapo",
+    "categoria": "limpieza"
+  },
+  {
+    "Id": 85,
+    "SKU": "SKU-4801",
+    "CodigoMongo": "MN-5488",
+    "CodigoAlt": "ALT-OS83",
+    "nombre": "Harina",
+    "categoria": "alimentos"
+  },
+  {
+    "Id": 86,
+    "SKU": "SKU-6430",
+    "CodigoMongo": "MN-5450",
+    "CodigoAlt": "ALT-IG49",
+    "nombre": "Manzana",
+    "categoria": "alimentos"
+  },
+  {
+    "Id": 87,
+    "SKU": "SKU-3584",
+    "CodigoMongo": "MN-2475",
+    "CodigoAlt": "ALT-CV31",
+    "nombre": "Enjuague Bucal",
+    "categoria": "higiene"
+  },
+  {
+    "Id": 88,
+    "SKU": "SKU-8402",
+    "CodigoMongo": "MN-2782",
+    "CodigoAlt": "ALT-TI96",
+    "nombre": "Cable USB",
+    "categoria": "electronicos"
+  },
+  {
+    "Id": 89,
+    "SKU": "SKU-7385",
+    "CodigoMongo": "MN-8300",
+    "CodigoAlt": "ALT-GE43",
+    "nombre": "Cebolla",
+    "categoria": "alimentos"
+  },
+  {
+    "Id": 90,
+    "SKU": "SKU-7186",
+    "CodigoMongo": "MN-1793",
+    "CodigoAlt": "ALT-DW44",
+    "nombre": "Bolsas de Basura",
+    "categoria": "limpieza"
+  },
+  {
+    "Id": 91,
+    "SKU": "SKU-2433",
+    "CodigoMongo": "MN-1011",
+    "CodigoAlt": "ALT-FF55",
+    "nombre": "Vinagre",
+    "categoria": "alimentos"
+  },
+  {
+    "Id": 92,
+    "SKU": "SKU-6199",
+    "CodigoMongo": "MN-3413",
+    "CodigoAlt": "ALT-CH33",
+    "nombre": "Mantequilla",
+    "categoria": "alimentos"
+  },
+  {
+    "Id": 93,
+    "SKU": "SKU-7718",
+    "CodigoMongo": "MN-3855",
+    "CodigoAlt": "ALT-KM38",
+    "nombre": "Protector de Pantalla",
+    "categoria": "electronicos"
+  },
+  {
+    "Id": 94,
+    "SKU": "SKU-6553",
+    "CodigoMongo": "MN-9958",
+    "CodigoAlt": "ALT-KT41",
+    "nombre": "Papel Higiénico",
+    "categoria": "higiene"
+  },
+  {
+    "Id": 95,
+    "SKU": "SKU-1400",
+    "CodigoMongo": "MN-6536",
+    "CodigoAlt": "ALT-AB22",
+    "nombre": "Guantes",
+    "categoria": "limpieza"
+  },
+  {
+    "Id": 96,
+    "SKU": "SKU-2736",
+    "CodigoMongo": "MN-8935",
+    "CodigoAlt": "ALT-PI60",
+    "nombre": "Recogedor",
+    "categoria": "limpieza"
+  },
+  {
+    "Id": 97,
+    "SKU": "SKU-8699",
+    "CodigoMongo": "MN-2297",
+    "CodigoAlt": "ALT-KQ27",
+    "nombre": "Vino Tinto",
+    "categoria": "bebidas"
+  },
+  {
+    "Id": 98,
+    "SKU": "SKU-3813",
+    "CodigoMongo": "MN-2371",
+    "CodigoAlt": "ALT-FM20",
+    "nombre": "Auriculares",
+    "categoria": "electronicos"
+  },
+  {
+    "Id": 99,
+    "SKU": "SKU-8480",
+    "CodigoMongo": "MN-2254",
+    "CodigoAlt": "ALT-EI58",
+    "nombre": "Limpiavidrios",
+    "categoria": "limpieza"
+  },
+  {
+    "Id": 100,
+    "SKU": "SKU-5444",
+    "CodigoMongo": "MN-6051",
+    "CodigoAlt": "ALT-UO11",
+    "nombre": "Esponja",
+    "categoria": "limpieza"
+  },
+  {
+    "Id": 101,
+    "SKU": "SKU-5177",
+    "CodigoMongo": "MN-7488",
+    "CodigoAlt": "ALT-EN37",
+    "nombre": "Crema Corporal",
+    "categoria": "higiene"
+  },
+  {
+    "Id": 102,
+    "SKU": "SKU-9833",
+    "CodigoMongo": "MN-1198",
+    "CodigoAlt": "ALT-EE34",
+    "nombre": "Bolsas de Basura",
+    "categoria": "limpieza"
+  },
+  {
+    "Id": 103,
+    "SKU": "SKU-9371",
+    "CodigoMongo": "MN-1644",
+    "CodigoAlt": "ALT-GP99",
+    "nombre": "Jugo de Manzana",
+    "categoria": "bebidas"
+  },
+  {
+    "Id": 104,
+    "SKU": "SKU-5342",
+    "CodigoMongo": "MN-2746",
+    "CodigoAlt": "ALT-UA53",
+    "nombre": "Refresco Cola",
+    "categoria": "bebidas"
+  },
+  {
+    "Id": 105,
+    "SKU": "SKU-9790",
+    "CodigoMongo": "MN-9789",
+    "CodigoAlt": "ALT-ZR98",
+    "nombre": "Energizante",
+    "categoria": "bebidas"
+  },
+  {
+    "Id": 106,
+    "SKU": "SKU-5836",
+    "CodigoMongo": "MN-5563",
+    "CodigoAlt": "ALT-PE54",
+    "nombre": "Mantequilla",
+    "categoria": "alimentos"
+  },
+  {
+    "Id": 107,
+    "SKU": "SKU-5147",
+    "CodigoMongo": "MN-8254",
+    "CodigoAlt": "ALT-UI41",
+    "nombre": "Café",
+    "categoria": "alimentos"
+  },
+  {
+    "Id": 108,
+    "SKU": "SKU-9739",
+    "CodigoMongo": "MN-5347",
+    "CodigoAlt": "ALT-HG59",
+    "nombre": "Vinagre",
+    "categoria": "alimentos"
+  },
+  {
+    "Id": 109,
+    "SKU": "SKU-4077",
+    "CodigoMongo": "MN-2131",
+    "CodigoAlt": "ALT-BR62",
+    "nombre": "Refresco Cola",
+    "categoria": "bebidas"
+  },
+  {
+    "Id": 110,
+    "SKU": "SKU-7788",
+    "CodigoMongo": "MN-8610",
+    "CodigoAlt": "ALT-SS79",
+    "nombre": "Vinagre",
+    "categoria": "alimentos"
+  },
+  {
+    "Id": 111,
+    "SKU": "SKU-8700",
+    "CodigoMongo": "MN-6319",
+    "CodigoAlt": "ALT-KR25",
+    "nombre": "Agua Mineral",
+    "categoria": "bebidas"
+  },
+  {
+    "Id": 112,
+    "SKU": "SKU-7920",
+    "CodigoMongo": "MN-4506",
+    "CodigoAlt": "ALT-GT31",
+    "nombre": "Adaptador",
+    "categoria": "electronicos"
+  },
+  {
+    "Id": 113,
+    "SKU": "SKU-9638",
+    "CodigoMongo": "MN-7188",
+    "CodigoAlt": "ALT-PQ47",
+    "nombre": "Mouse",
+    "categoria": "electronicos"
+  },
+  {
+    "Id": 114,
+    "SKU": "SKU-4248",
+    "CodigoMongo": "MN-5326",
+    "CodigoAlt": "ALT-DM84",
+    "nombre": "Café",
+    "categoria": "alimentos"
+  },
+  {
+    "Id": 115,
+    "SKU": "SKU-8865",
+    "CodigoMongo": "MN-4091",
+    "CodigoAlt": "ALT-AQ69",
+    "nombre": "Jugo de Manzana",
+    "categoria": "bebidas"
+  },
+  {
+    "Id": 116,
+    "SKU": "SKU-8837",
+    "CodigoMongo": "MN-5550",
+    "CodigoAlt": "ALT-OE22",
+    "nombre": "Néctar",
+    "categoria": "bebidas"
+  },
+  {
+    "Id": 117,
+    "SKU": "SKU-3566",
+    "CodigoMongo": "MN-2484",
+    "CodigoAlt": "ALT-HD31",
+    "nombre": "Cebolla",
+    "categoria": "alimentos"
+  },
+  {
+    "Id": 118,
+    "SKU": "SKU-7558",
+    "CodigoMongo": "MN-3113",
+    "CodigoAlt": "ALT-CM43",
+    "nombre": "Té",
+    "categoria": "alimentos"
+  },
+  {
+    "Id": 119,
+    "SKU": "SKU-6505",
+    "CodigoMongo": "MN-8039",
+    "CodigoAlt": "ALT-NB44",
+    "nombre": "Teclado",
+    "categoria": "electronicos"
+  },
+  {
+    "Id": 120,
+    "SKU": "SKU-5459",
+    "CodigoMongo": "MN-1828",
+    "CodigoAlt": "ALT-SG30",
+    "nombre": "Cloro",
+    "categoria": "limpieza"
+  },
+  {
+    "Id": 121,
+    "SKU": "SKU-7444",
+    "CodigoMongo": "MN-2828",
+    "CodigoAlt": "ALT-OO58",
+    "nombre": "Agua Mineral",
+    "categoria": "bebidas"
+  },
+  {
+    "Id": 122,
+    "SKU": "SKU-6033",
+    "CodigoMongo": "MN-4195",
+    "CodigoAlt": "ALT-MU56",
+    "nombre": "Control Remoto",
+    "categoria": "electronicos"
+  },
+  {
+    "Id": 123,
+    "SKU": "SKU-1548",
+    "CodigoMongo": "MN-9746",
+    "CodigoAlt": "ALT-VP73",
+    "nombre": "Agua Saborizada",
+    "categoria": "bebidas"
+  },
+  {
+    "Id": 124,
+    "SKU": "SKU-6897",
+    "CodigoMongo": "MN-1874",
+    "CodigoAlt": "ALT-LM43",
+    "nombre": "Guantes",
+    "categoria": "limpieza"
+  },
+  {
+    "Id": 125,
+    "SKU": "SKU-6375",
+    "CodigoMongo": "MN-1528",
+    "CodigoAlt": "ALT-ZV98",
+    "nombre": "Trapo",
+    "categoria": "limpieza"
+  },
+  {
+    "Id": 126,
+    "SKU": "SKU-8998",
+    "CodigoMongo": "MN-8486",
+    "CodigoAlt": "ALT-GT27",
+    "nombre": "Recogedor",
+    "categoria": "limpieza"
+  },
+  {
+    "Id": 127,
+    "SKU": "SKU-8749",
+    "CodigoMongo": "MN-2616",
+    "CodigoAlt": "ALT-UF32",
+    "nombre": "Harina",
+    "categoria": "alimentos"
+  },
+  {
+    "Id": 128,
+    "SKU": "SKU-8187",
+    "CodigoMongo": "MN-5452",
+    "CodigoAlt": "ALT-KH59",
+    "nombre": "Batido",
+    "categoria": "bebidas"
+  },
+  {
+    "Id": 129,
+    "SKU": "SKU-6913",
+    "CodigoMongo": "MN-3999",
+    "CodigoAlt": "ALT-MK87",
+    "nombre": "Trapo",
+    "categoria": "limpieza"
+  },
+  {
+    "Id": 130,
+    "SKU": "SKU-3377",
+    "CodigoMongo": "MN-5304",
+    "CodigoAlt": "ALT-FS87",
+    "nombre": "Guantes",
+    "categoria": "limpieza"
+  },
+  {
+    "Id": 131,
+    "SKU": "SKU-2998",
+    "CodigoMongo": "MN-3266",
+    "CodigoAlt": "ALT-IM31",
+    "nombre": "Esponja",
+    "categoria": "limpieza"
+  },
+  {
+    "Id": 132,
+    "SKU": "SKU-5995",
+    "CodigoMongo": "MN-6728",
+    "CodigoAlt": "ALT-VR93",
+    "nombre": "Isotónica",
+    "categoria": "bebidas"
+  },
+  {
+    "Id": 133,
+    "SKU": "SKU-5163",
+    "CodigoMongo": "MN-2434",
+    "CodigoAlt": "ALT-NU64",
+    "nombre": "Desodorante",
+    "categoria": "higiene"
+  },
+  {
+    "Id": 134,
+    "SKU": "SKU-6513",
+    "CodigoMongo": "MN-4277",
+    "CodigoAlt": "ALT-FC39",
+    "nombre": "Trapo",
+    "categoria": "limpieza"
+  },
+  {
+    "Id": 135,
+    "SKU": "SKU-5654",
+    "CodigoMongo": "MN-1364",
+    "CodigoAlt": "ALT-DB79",
+    "nombre": "Trapeador",
+    "categoria": "limpieza"
+  },
+  {
+    "Id": 136,
+    "SKU": "SKU-2743",
+    "CodigoMongo": "MN-6377",
+    "CodigoAlt": "ALT-VC60",
+    "nombre": "Afeitadora",
+    "categoria": "higiene"
+  },
+  {
+    "Id": 137,
+    "SKU": "SKU-4501",
+    "CodigoMongo": "MN-3941",
+    "CodigoAlt": "ALT-HZ36",
+    "nombre": "Azúcar",
+    "categoria": "alimentos"
+  },
+  {
+    "Id": 138,
+    "SKU": "SKU-2688",
+    "CodigoMongo": "MN-2751",
+    "CodigoAlt": "ALT-OL26",
+    "nombre": "Protector de Pantalla",
+    "categoria": "electronicos"
+  },
+  {
+    "Id": 139,
+    "SKU": "SKU-2070",
+    "CodigoMongo": "MN-2457",
+    "CodigoAlt": "ALT-GJ92",
+    "nombre": "Escoba",
+    "categoria": "limpieza"
+  },
+  {
+    "Id": 140,
+    "SKU": "SKU-7957",
+    "CodigoMongo": "MN-5914",
+    "CodigoAlt": "ALT-DV50",
+    "nombre": "Memoria USB",
+    "categoria": "electronicos"
+  },
+  {
+    "Id": 141,
+    "SKU": "SKU-4060",
+    "CodigoMongo": "MN-9276",
+    "CodigoAlt": "ALT-HS17",
+    "nombre": "Azúcar",
+    "categoria": "alimentos"
+  },
+  {
+    "Id": 142,
+    "SKU": "SKU-7561",
+    "CodigoMongo": "MN-2210",
+    "CodigoAlt": "ALT-TQ72",
+    "nombre": "Hilo Dental",
+    "categoria": "higiene"
+  },
+  {
+    "Id": 143,
+    "SKU": "SKU-6324",
+    "CodigoMongo": "MN-8480",
+    "CodigoAlt": "ALT-OF97",
+    "nombre": "Toallas Húmedas",
+    "categoria": "higiene"
+  },
+  {
+    "Id": 144,
+    "SKU": "SKU-4689",
+    "CodigoMongo": "MN-7797",
+    "CodigoAlt": "ALT-TN60",
+    "nombre": "Webcam",
+    "categoria": "electronicos"
+  },
+  {
+    "Id": 145,
+    "SKU": "SKU-7155",
+    "CodigoMongo": "MN-8579",
+    "CodigoAlt": "ALT-BQ86",
+    "nombre": "Pañuelos",
+    "categoria": "higiene"
+  },
+  {
+    "Id": 146,
+    "SKU": "SKU-3901",
+    "CodigoMongo": "MN-6996",
+    "CodigoAlt": "ALT-KB56",
+    "nombre": "Gel de Baño",
+    "categoria": "higiene"
+  },
+  {
+    "Id": 147,
+    "SKU": "SKU-3014",
+    "CodigoMongo": "MN-5676",
+    "CodigoAlt": "ALT-ZK32",
+    "nombre": "Desinfectante",
+    "categoria": "limpieza"
+  },
+  {
+    "Id": 148,
+    "SKU": "SKU-2684",
+    "CodigoMongo": "MN-7119",
+    "CodigoAlt": "ALT-FW73",
+    "nombre": "Champú",
+    "categoria": "higiene"
+  },
+  {
+    "Id": 149,
+    "SKU": "SKU-1760",
+    "CodigoMongo": "MN-3523",
+    "CodigoAlt": "ALT-GZ64",
+    "nombre": "Cerveza",
+    "categoria": "bebidas"
+  },
+  {
+    "Id": 150,
+    "SKU": "SKU-4108",
+    "CodigoMongo": "MN-8233",
+    "CodigoAlt": "ALT-OY23",
+    "nombre": "Pasta Dental",
+    "categoria": "higiene"
+  },
+  {
+    "Id": 151,
+    "SKU": "SKU-5432",
+    "CodigoMongo": "MN-9849",
+    "CodigoAlt": "ALT-NI26",
+    "nombre": "Detergente",
+    "categoria": "limpieza"
+  },
+  {
+    "Id": 152,
+    "SKU": "SKU-2317",
+    "CodigoMongo": "MN-2063",
+    "CodigoAlt": "ALT-YF25",
+    "nombre": "Limpiavidrios",
+    "categoria": "limpieza"
+  },
+  {
+    "Id": 153,
+    "SKU": "SKU-2340",
+    "CodigoMongo": "MN-2825",
+    "CodigoAlt": "ALT-GF52",
+    "nombre": "Funda para Celular",
+    "categoria": "electronicos"
+  },
+  {
+    "Id": 154,
+    "SKU": "SKU-1444",
+    "CodigoMongo": "MN-7210",
+    "CodigoAlt": "ALT-YB50",
+    "nombre": "Refresco Cola",
+    "categoria": "bebidas"
+  },
+  {
+    "Id": 155,
+    "SKU": "SKU-5816",
+    "CodigoMongo": "MN-8294",
+    "CodigoAlt": "ALT-PB97",
+    "nombre": "Azúcar",
+    "categoria": "alimentos"
+  },
+  {
+    "Id": 156,
+    "SKU": "SKU-9792",
+    "CodigoMongo": "MN-9340",
+    "CodigoAlt": "ALT-ZP76",
+    "nombre": "Limpiador Multiuso",
+    "categoria": "limpieza"
+  },
+  {
+    "Id": 157,
+    "SKU": "SKU-2256",
+    "CodigoMongo": "MN-7364",
+    "CodigoAlt": "ALT-PI13",
+    "nombre": "Cerveza",
+    "categoria": "bebidas"
+  },
+  {
+    "Id": 158,
+    "SKU": "SKU-9388",
+    "CodigoMongo": "MN-2092",
+    "CodigoAlt": "ALT-KU64",
+    "nombre": "Jabón Líquido",
+    "categoria": "limpieza"
+  },
+  {
+    "Id": 159,
+    "SKU": "SKU-2662",
+    "CodigoMongo": "MN-2224",
+    "CodigoAlt": "ALT-VH13",
+    "nombre": "Protector de Pantalla",
+    "categoria": "electronicos"
+  },
+  {
+    "Id": 160,
+    "SKU": "SKU-6492",
+    "CodigoMongo": "MN-9319",
+    "CodigoAlt": "ALT-NW87",
+    "nombre": "Harina",
+    "categoria": "alimentos"
+  },
+  {
+    "Id": 161,
+    "SKU": "SKU-2283",
+    "CodigoMongo": "MN-9573",
+    "CodigoAlt": "ALT-ER44",
+    "nombre": "Adaptador",
+    "categoria": "electronicos"
+  },
+  {
+    "Id": 162,
+    "SKU": "SKU-3084",
+    "CodigoMongo": "MN-7721",
+    "CodigoAlt": "ALT-VX89",
+    "nombre": "Memoria USB",
+    "categoria": "electronicos"
+  },
+  {
+    "Id": 163,
+    "SKU": "SKU-8657",
+    "CodigoMongo": "MN-3739",
+    "CodigoAlt": "ALT-DE61",
+    "nombre": "Cebolla",
+    "categoria": "alimentos"
+  },
+  {
+    "Id": 164,
+    "SKU": "SKU-7859",
+    "CodigoMongo": "MN-1008",
+    "CodigoAlt": "ALT-QE99",
+    "nombre": "Néctar",
+    "categoria": "bebidas"
+  },
+  {
+    "Id": 165,
+    "SKU": "SKU-2996",
+    "CodigoMongo": "MN-8569",
+    "CodigoAlt": "ALT-LC53",
+    "nombre": "Teclado",
+    "categoria": "electronicos"
+  },
+  {
+    "Id": 166,
+    "SKU": "SKU-9700",
+    "CodigoMongo": "MN-4580",
+    "CodigoAlt": "ALT-OX20",
+    "nombre": "Gel de Baño",
+    "categoria": "higiene"
+  },
+  {
+    "Id": 167,
+    "SKU": "SKU-2648",
+    "CodigoMongo": "MN-6064",
+    "CodigoAlt": "ALT-XP73",
+    "nombre": "Trapeador",
+    "categoria": "limpieza"
+  },
+  {
+    "Id": 168,
+    "SKU": "SKU-2620",
+    "CodigoMongo": "MN-5617",
+    "CodigoAlt": "ALT-VK29",
+    "nombre": "Agua Mineral",
+    "categoria": "bebidas"
+  },
+  {
+    "Id": 169,
+    "SKU": "SKU-2544",
+    "CodigoMongo": "MN-9420",
+    "CodigoAlt": "ALT-LW34",
+    "nombre": "Enjuague Bucal",
+    "categoria": "higiene"
+  },
+  {
+    "Id": 170,
+    "SKU": "SKU-4902",
+    "CodigoMongo": "MN-4595",
+    "CodigoAlt": "ALT-EQ29",
+    "nombre": "Cerveza",
+    "categoria": "bebidas"
+  },
+  {
+    "Id": 171,
+    "SKU": "SKU-1811",
+    "CodigoMongo": "MN-7054",
+    "CodigoAlt": "ALT-QA15",
+    "nombre": "Webcam",
+    "categoria": "electronicos"
+  },
+  {
+    "Id": 172,
+    "SKU": "SKU-8789",
+    "CodigoMongo": "MN-5171",
+    "CodigoAlt": "ALT-ZY54",
+    "nombre": "Pasta",
+    "categoria": "alimentos"
+  },
+  {
+    "Id": 173,
+    "SKU": "SKU-7049",
+    "CodigoMongo": "MN-2278",
+    "CodigoAlt": "ALT-LG87",
+    "nombre": "Auriculares",
+    "categoria": "electronicos"
+  },
+  {
+    "Id": 174,
+    "SKU": "SKU-3735",
+    "CodigoMongo": "MN-4581",
+    "CodigoAlt": "ALT-UJ62",
+    "nombre": "Toallas Húmedas",
+    "categoria": "higiene"
+  },
+  {
+    "Id": 175,
+    "SKU": "SKU-3382",
+    "CodigoMongo": "MN-9547",
+    "CodigoAlt": "ALT-AR17",
+    "nombre": "Cerveza",
+    "categoria": "bebidas"
+  },
+  {
+    "Id": 176,
+    "SKU": "SKU-7192",
+    "CodigoMongo": "MN-8412",
+    "CodigoAlt": "ALT-GM56",
+    "nombre": "Smoothie",
+    "categoria": "bebidas"
+  },
+  {
+    "Id": 177,
+    "SKU": "SKU-5144",
+    "CodigoMongo": "MN-4667",
+    "CodigoAlt": "ALT-LD45",
+    "nombre": "Queso",
+    "categoria": "alimentos"
+  },
+  {
+    "Id": 178,
+    "SKU": "SKU-3788",
+    "CodigoMongo": "MN-4290",
+    "CodigoAlt": "ALT-ZU57",
+    "nombre": "Gel de Baño",
+    "categoria": "higiene"
+  },
+  {
+    "Id": 179,
+    "SKU": "SKU-3669",
+    "CodigoMongo": "MN-1887",
+    "CodigoAlt": "ALT-YD85",
+    "nombre": "Escoba",
+    "categoria": "limpieza"
+  },
+  {
+    "Id": 180,
+    "SKU": "SKU-9207",
+    "CodigoMongo": "MN-3222",
+    "CodigoAlt": "ALT-VR10",
+    "nombre": "Limpiador Multiuso",
+    "categoria": "limpieza"
+  }
+]
