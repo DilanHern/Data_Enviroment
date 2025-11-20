@@ -9,7 +9,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from dotenv import load_dotenv
 import requests
 import sys
-
+from decimal import Decimal
 import platform
 from collections import defaultdict
 
@@ -102,6 +102,14 @@ def a_utc_iso(fecha_str):
 
     return fecha_utc.isoformat()
 
+def utc_a_hora_cr(fecha_str):
+    fecha_utc = datetime.fromisoformat(fecha_str.replace("Z", "+00:00")).astimezone(timezone.utc)
+
+
+    tz_cr = timezone(timedelta(hours=-6))
+    fecha_cr = fecha_utc.astimezone(tz_cr)
+
+    return fecha_cr.date().isoformat()
 
 def traetablassupa(url, headers, table):
     rows: list[dict] = []
@@ -268,7 +276,7 @@ def diccionario_ordenes_por_cliente_fecha(ordenesfecha):
 
     for o in ordenesfecha:
         cliente = o["cliente_id"]
-        fecha = o["fecha"][:10]  
+        fecha = utc_a_hora_cr(o["fecha"])
         ordenes_cliente_fecha[cliente][fecha].append(o["orden_id"])
 
     return ordenes_cliente_fecha
@@ -362,22 +370,49 @@ def transformadoryloadsupaVENTAS(engine, url, headers, ordenesfecha, sqltablafec
                     total = metricas["monto_total"]
                     cantidad = metricas["cantidad_total"]
                     precio_unitario = total / cantidad if cantidad != 0 else 0
-
-                    conn.execute(
+                    row = conn.execute(
                         text("""
-                            INSERT INTO dbo.FactVentas 
-                            (IdTiempo, IdProducto, IdCliente, TotalVentas, Cantidad, Precio)
-                            VALUES (:IdTiempo, :IdProducto, :IdCliente, :TotalVentas, :Cantidad, :Precio)
-                        """),
-                        {
-                            "IdTiempo": idtiempo,
-                            "IdProducto": idproducto,
-                            "IdCliente": idcliente,
-                            "TotalVentas": total,
-                            "Cantidad": cantidad,
-                            "Precio": precio_unitario
-                        }
-                    )
+                            SELECT IdFactVentas, TotalVentas, Cantidad
+                            FROM dbo.FactVentas WHERE IdTiempo = :IdTiempo AND IdProducto = :IdProducto AND IdCliente = :IdCliente"""),
+                        {"IdTiempo": idtiempo,"IdProducto": idproducto,"IdCliente": idcliente}).fetchone()
+
+                    if row:
+                        #Si ya existe entonces actualiza los datos en la tabla fact ventas
+                        idfact = row[0]
+
+                        total_prev = Decimal(row[1])           # viene como Decimal pero lo envolvemos por seguridad
+                        cantidad_prev = Decimal(row[2])
+
+                        total = Decimal(str(total))            # convertir el "total" del ETL a Decimal
+                        cantidad = Decimal(str(cantidad))      # convertir la cantidad a Decimal
+
+                        nuevo_total = total_prev + total
+                        nueva_cantidad = cantidad_prev + cantidad
+
+                        nuevo_precio = (nuevo_total / nueva_cantidad if nueva_cantidad != 0 else Decimal("0"))
+
+                        conn.execute(
+                            text("""
+                                UPDATE dbo.FactVentas
+                                SET TotalVentas = :TotalVentas, Cantidad = :Cantidad, Precio = :Precio WHERE IdFactVentas = :IdFactVentas
+                            """),{"TotalVentas": nuevo_total,"Cantidad": nueva_cantidad,"Precio": nuevo_precio,"IdFactVentas": idfact})
+                    else:
+                        #Si no existe solo hace un insert y ya
+                        conn.execute(
+                            text("""
+                                INSERT INTO dbo.FactVentas 
+                                (IdTiempo, IdProducto, IdCliente, TotalVentas, Cantidad, Precio)
+                                VALUES (:IdTiempo, :IdProducto, :IdCliente, :TotalVentas, :Cantidad, :Precio)
+                            """),
+                            {
+                                "IdTiempo": idtiempo,
+                                "IdProducto": idproducto,
+                                "IdCliente": idcliente,
+                                "TotalVentas": total,
+                                "Cantidad": cantidad,
+                                "Precio": precio_unitario
+                            }
+                        )
 
 
 def run_etl():
