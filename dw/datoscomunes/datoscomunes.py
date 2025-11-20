@@ -98,17 +98,24 @@ def load_json_to_equivalencias(json_path: str, upsert=True):
 			if not sku:
 				continue
 
+			# Campos adicionales para DimProducto (si vienen en el JSON)
+			nombre = r.get('Nombre') or r.get('nombre') or r.get('NombreProducto') or r.get('nombreProducto')
+			categoria = r.get('Categoria') or r.get('categoria') or r.get('CategoriaProducto') or r.get('categoriaProducto')
+
 			# No generar datos que no estén en el JSON.
-			# Si el JSON trae 'CodigoMongo' o 'CodigoAlt' los usaremos, si no, dejaremos NULL y no actualizaremos existentes.
 			codigo_mongo = r.get('CodigoMongo') or r.get('codigoMongo') or r.get('codigo_mongo')
 			codigo_alt = r.get('CodigoAlt') or r.get('codigoAlt') or r.get('codigo_alt')
 
-			cursor.execute("SELECT Id FROM Equivalencias WHERE SKU = ?", sku)
-			existing = cursor.fetchone()
+			try:
+				cursor.execute("SELECT Id FROM Equivalencias WHERE SKU = ?", sku)
+				existing = cursor.fetchone()
+			except Exception as e:
+				logging.error(f"Error consultando Equivalencias SKU={sku}: {e}")
+				continue
 
+			# Si existe la equivalencia y se permite upsert, actualizar campos que vengan
 			if existing:
 				if upsert:
-					# Sólo actualizar columnas que vienen en el JSON. Si no vienen, no sobrescribimos.
 					sets = []
 					params = []
 					if codigo_mongo is not None:
@@ -125,13 +132,54 @@ def load_json_to_equivalencias(json_path: str, upsert=True):
 							cursor.execute(sql, *params)
 							updated += 1
 						except Exception as e:
-							logging.error(f"Error actualizando SKU={sku}: {e}")
-							continue
-					else:
-						# nada que actualizar
-						continue
+							logging.error(f"Error actualizando Equivalencias SKU={sku}: {e}")
+							# no abortar: intentar sync de producto aun si fallo la equivalencia
+					# sincronizar DimProducto si vienen datos de producto
+					if nombre is not None or categoria is not None:
+						try:
+							cursor.execute("SELECT IdProducto FROM DimProducto WHERE SKU = ?", sku)
+							prod = cursor.fetchone()
+						except Exception as e:
+							logging.error(f"Error consultando DimProducto SKU={sku}: {e}")
+							prod = None
+
+						if prod:
+							psets = []
+							pparams = []
+							if nombre is not None:
+								psets.append("Nombre = ?")
+								pparams.append(nombre)
+							if categoria is not None:
+								psets.append("Categoria = ?")
+								pparams.append(categoria)
+							if psets:
+								psql = f"UPDATE DimProducto SET {', '.join(psets)} WHERE SKU = ?"
+								pparams.append(sku)
+								try:
+									cursor.execute(psql, *pparams)
+								except Exception as e:
+									logging.error(f"Error actualizando DimProducto SKU={sku}: {e}")
+						else:
+							# insertar nuevo producto con columnas disponibles
+							pcols = ["SKU"]
+							pplaceholders = ["?"]
+							pparams = [sku]
+							if nombre is not None:
+								pcols.append("Nombre")
+								pplaceholders.append("?")
+								pparams.append(nombre)
+							if categoria is not None:
+								pcols.append("Categoria")
+								pplaceholders.append("?")
+								pparams.append(categoria)
+							psql = f"INSERT INTO DimProducto ({', '.join(pcols)}) VALUES ({', '.join(pplaceholders)})"
+							try:
+								cursor.execute(psql, *pparams)
+							except Exception as e:
+								logging.error(f"Error insertando DimProducto SKU={sku}: {e}")
+
 			else:
-				# Insertar sólo las columnas que tengamos en el JSON (si no hay CodigoMongo/CodigoAlt quedarán NULL)
+				# Insertar en Equivalencias
 				cols = ["SKU"]
 				placeholders = ["?"]
 				params = [sku]
@@ -149,8 +197,34 @@ def load_json_to_equivalencias(json_path: str, upsert=True):
 					cursor.execute(sql, *params)
 					inserted += 1
 				except Exception as e:
-					logging.error(f"Error insertando SKU={sku}: {e}")
-					continue
+					logging.error(f"Error insertando Equivalencias SKU={sku}: {e}")
+					# continuar con siguiente registro; no abortar por fallo en Equivalencias
+
+				# Al crear Equivalencias, también crear DimProducto si no existe y hay datos
+				try:
+					cursor.execute("SELECT IdProducto FROM DimProducto WHERE SKU = ?", sku)
+					prod = cursor.fetchone()
+				except Exception as e:
+					logging.error(f"Error verificando DimProducto SKU={sku}: {e}")
+					prod = None
+
+				if not prod and (nombre is not None or categoria is not None):
+					pcols = ["SKU"]
+					pplaceholders = ["?"]
+					pparams = [sku]
+					if nombre is not None:
+						pcols.append("Nombre")
+						pplaceholders.append("?")
+						pparams.append(nombre)
+					if categoria is not None:
+						pcols.append("Categoria")
+						pplaceholders.append("?")
+						pparams.append(categoria)
+					psql = f"INSERT INTO DimProducto ({', '.join(pcols)}) VALUES ({', '.join(pplaceholders)})"
+					try:
+						cursor.execute(psql, *pparams)
+					except Exception as e:
+						logging.error(f"Error insertando DimProducto SKU={sku}: {e}")
 
 		conn.commit()
 		cursor.close()
