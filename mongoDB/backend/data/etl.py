@@ -1,19 +1,11 @@
 import pymongo
 import pyodbc
-import logging
 from datetime import datetime, timedelta
 import platform
 import os
-import json
 from dotenv import load_dotenv
 
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '..', '.env'))
-
-
-logging.basicConfig(
-    level=logging.INFO, 
-    format='%(asctime)s - %(levelname)s - %(message)s'
-)
 
 class MongoToDW_ETL:
     def __init__(self):
@@ -43,10 +35,10 @@ class MongoToDW_ETL:
         self.genero_mapping = {
             'Masculino': 'M',
             'Femenino': 'F',
-            'Otro': 'N'  # No especificado
+            'Otro': 'N'  
         }
         
-    def generate_sku_from_mongo_code(self, codigo_mongo):
+    def mongo_a_sku(self, codigo_mongo):
         #si tenemos el codigo de mongo pero no el sku lo tenemos que generar para ponerlo en el dimproducto
 
         if not codigo_mongo:
@@ -67,73 +59,61 @@ class MongoToDW_ETL:
         else:
             return f'PRD-{codigo_mongo.replace("-", "")[:4].upper()}-XX'
         
-    def get_last_execution_info(self):
+    def ultima_ejecucion(self):
         # esta es la parte que evita que metamos duplicados o así
         try:
             if not os.path.exists(self.log_file_path):
-                logging.info("Primera ejecución del etl")
                 return None
             
-            last_successful_execution = None
             with open(self.log_file_path, 'r', encoding='utf-8') as f:
-                for line in f:
-                    try:
-                        log_entry = json.loads(line.strip())
-                        if log_entry.get('estado') == 'SUCCESS':
-                            last_successful_execution = log_entry
-                    except json.JSONDecodeError:
-                        continue
+                lines = f.readlines()
+                if lines:
+                    last_line = lines[-1].strip()
+                    if last_line:
+                        try:
+                            last_date = datetime.strptime(last_line, '%Y-%m-%d').date()
+                            print(f"Última fecha procesada encontrada: {last_date}")
+                            return last_date
+                        except ValueError:
+                            print(f"Formato de fecha inválido en log: {last_line}")
+                            return None
             
-            if last_successful_execution and last_successful_execution.get('ultima_fecha_procesada'):
-                last_date = datetime.strptime(last_successful_execution['ultima_fecha_procesada'], '%Y-%m-%d').date()
-                logging.info(f"Última ejecución exitosa encontrada: {last_date} - {last_successful_execution['registros_procesados']} registros")
-                return last_date
-            else:
-                logging.info("No se encontraron ejecuciones exitosas previas en el log")
-                return None
+            print("No se encontraron fechas previas en el log")
+            return None
                 
         except Exception as e:
-            logging.error(f"Error leyendo archivo de log: {e}")
+            print(f"Error leyendo archivo de log: {e}")
             return None
     
-    def log_execution(self, ultima_fecha_procesada, registros_procesados, estado, mensaje=None):
-        
+    def registrar_log(self, ultima_fecha_procesada):
         try:
-            log_entry = {
-                'timestamp': datetime.now().isoformat(),
-                'ultima_fecha_procesada': ultima_fecha_procesada.strftime('%Y-%m-%d') if ultima_fecha_procesada else None,
-                'registros_procesados': registros_procesados,
-                'estado': estado,
-                'mensaje': mensaje
-            }
-            
-            with open(self.log_file_path, 'a', encoding='utf-8') as f:
-                f.write(json.dumps(log_entry) + '\n')
+            with open(self.log_file_path, 'w', encoding='utf-8') as f:
+                f.write(ultima_fecha_procesada.strftime('%Y-%m-%d'))
                 
-            logging.info(f"Ejecución registrada en log: {estado} - {registros_procesados} registros - Fecha: {ultima_fecha_procesada}")
+            print(f"Fecha registrada en log: {ultima_fecha_procesada}")
             
         except Exception as e:
-            logging.error(f"Error escribiendo en archivo de log: {e}")
+            print(f"Error escribiendo en archivo de log: {e}")
     
     def connect_mongo(self):
         try:
             self.mongo_client = pymongo.MongoClient(self.mongo_uri)
             self.mongo_db = self.mongo_client.get_database()
-            logging.info("Conexión exitosa a MongoDB")
+            print("Conexión exitosa a MongoDB")
         except Exception as e:
-            logging.error(f"Error conectando a MongoDB: {e}")
+            print(f"Error conectando a MongoDB: {e}")
             raise
     
     def connect_sql_server(self):
         try:
             connection_string = f"DRIVER={{{self.driver}}};SERVER={self.server};DATABASE={self.database};UID={self.username};PWD={self.password};TrustServerCertificate=yes;"
             self.sql_connection = pyodbc.connect(connection_string)
-            logging.info("Conexión exitosa a SQL Server DW")
+            print("Conexión exitosa a SQL Server DW")
         except Exception as e:
-            logging.error(f"Error conectando a SQL Server: {e}")
+            print(f"Error conectando a SQL Server: {e}")
             raise
     
-    def get_exchange_rate_for_date(self, fecha):
+    def tc_dia(self, fecha):
 
         try:
             cursor = self.sql_connection.cursor()
@@ -148,13 +128,13 @@ class MongoToDW_ETL:
             if result and result[0]:
                 return float(result[0])
             else:
-                return 500.00  # Valor por defecto
+                return 500.00 
                     
         except Exception as e:
-            logging.error(f"Error obteniendo tipo de cambio: {e}")
+            print(f"Error obteniendo tipo de cambio: {e}")
             return 500.00
     
-    def get_or_create_cliente(self, cliente_data):
+    def obtener_cliente(self, cliente_data):
         try:
             cursor = self.sql_connection.cursor()
             
@@ -185,14 +165,14 @@ class MongoToDW_ETL:
             cliente_id = cursor.fetchone()[0]
             self.sql_connection.commit()
             
-            logging.info(f"Cliente creado: {cliente_data['email']} - ID: {cliente_id}")
+            print(f"Cliente creado: {cliente_data['email']} - ID: {cliente_id}")
             return int(cliente_id)
             
         except Exception as e:
-            logging.error(f"Error procesando cliente: {e}")
+            print(f"Error procesando cliente: {e}")
             return None
     
-    def process_equivalencias_and_get_producto(self, producto_data):
+    def obtener_producto(self, producto_data):
         try:
             cursor = self.sql_connection.cursor()
             
@@ -220,7 +200,7 @@ class MongoToDW_ETL:
             # si sí, buscamos el product por su sku
             if equivalencia_id and sku_existente:
                 sku_final = sku_existente
-                logging.info(f"Encontrada equivalencia existente para {codigo_mongo} - SKU: {sku_final}")
+                print(f"Encontrada equivalencia existente para {codigo_mongo} - SKU: {sku_final}")
                 
                 
                 query = "SELECT IdProducto FROM DimProducto WHERE SKU = ?"
@@ -228,13 +208,13 @@ class MongoToDW_ETL:
                 result = cursor.fetchone()
                 if result:
                     producto_id = result[0]
-                    logging.info(f"Encontrado producto existente - ID: {producto_id}")
+                    print(f"Encontrado producto existente - ID: {producto_id}")
                     return int(producto_id)
             
             
             if not equivalencia_id:
                 # generamos el sku desde el codigo mongo
-                sku_generado = self.generate_sku_from_mongo_code(codigo_mongo) if codigo_mongo else None
+                sku_generado = self.mongo_a_sku(codigo_mongo) if codigo_mongo else None
                 sku_final = sku_from_equivalencias or sku_generado
                 
                 # buscamos por ese sku
@@ -244,7 +224,7 @@ class MongoToDW_ETL:
                     result = cursor.fetchone()
                     if result:
                         equivalencia_id = result[0]
-                        logging.info(f"Encontrada equivalencia por SKU: {sku_final}")
+                        print(f"Encontrada equivalencia por SKU: {sku_final}")
                 
                 # sino por código alternativo
                 if not equivalencia_id and codigo_alt:
@@ -253,7 +233,7 @@ class MongoToDW_ETL:
                     result = cursor.fetchone()
                     if result:
                         equivalencia_id = result[0]
-                        logging.info(f"Encontrada equivalencia por código alt: {codigo_alt}")
+                        print(f"Encontrada equivalencia por código alt: {codigo_alt}")
                 
                 # si no hay, hacemos una nueva equivalencia
                 if not equivalencia_id:
@@ -264,7 +244,7 @@ class MongoToDW_ETL:
                     cursor.execute(insert_query, (sku_final, codigo_mongo, codigo_alt))
                     cursor.execute("SELECT @@IDENTITY")
                     equivalencia_id = cursor.fetchone()[0]
-                    logging.info(f"Nueva equivalencia creada - ID: {equivalencia_id}, SKU: {sku_final}")
+                    print(f"Nueva equivalencia creada - ID: {equivalencia_id}, SKU: {sku_final}")
             else:
                 sku_final = sku_existente
             
@@ -285,13 +265,13 @@ class MongoToDW_ETL:
                 cursor.execute(insert_query, (sku_final, nombre, categoria))
                 cursor.execute("SELECT @@IDENTITY")
                 producto_id = cursor.fetchone()[0]
-                logging.info(f"Producto creado: {nombre} - ID: {producto_id}, SKU: {sku_final}")
+                print(f"Producto creado: {nombre} - ID: {producto_id}, SKU: {sku_final}")
             
             self.sql_connection.commit()
             return int(producto_id)
             
         except Exception as e:
-            logging.error(f"Error procesando producto/equivalencias: {e}")
+            print(f"Error procesando producto/equivalencias: {e}")
             return None
     
     def check_field_exists(self, table, field, id_value):
@@ -314,17 +294,17 @@ class MongoToDW_ETL:
             if result:
                 return result[0]
             else:
-                logging.warning(f"No se encontró IdTiempo para fecha {fecha.date()}")
+                print(f"No se encontró IdTiempo para fecha {fecha.date()}")
                 return None
                 
         except Exception as e:
-            logging.error(f"Error obteniendo IdTiempo: {e}")
+            print(f"Error obteniendo IdTiempo: {e}")
             return None
     
-    def process_orders(self, limit=None):
+    def procesar_ordenes(self, limit=None):
         try:
             
-            last_execution_date = self.get_last_execution_info()
+            last_execution_date = self.ultima_ejecucion()
             
             ordenes_collection = self.mongo_db['ordenes']
             
@@ -368,9 +348,9 @@ class MongoToDW_ETL:
                     }
                 }
                 pipeline.insert(0, date_filter)  
-                logging.info(f"Analizando órdenes posteriores al: {next_day}")
+                print(f"Analizando órdenes posteriores al: {next_day}")
             else:
-                logging.info("Primera ejecución - procesando todas las órdenes")
+                print("Primera ejecución - procesando todas las órdenes")
             
            
             pipeline.extend([
@@ -412,7 +392,7 @@ class MongoToDW_ETL:
             if not ventas_agregadas:
                 return 0, None
             
-            logging.info(f"Procesando {len(ventas_agregadas)} ventas agregadas por cliente/producto/día")
+            print(f"Procesando {len(ventas_agregadas)} ventas agregadas por cliente/producto/día")
             
             processed_count = 0
             error_count = 0
@@ -431,13 +411,13 @@ class MongoToDW_ETL:
                         ultima_fecha_procesada = fecha.date()
                     
                     
-                    cliente_id = self.get_or_create_cliente(venta['cliente_data'])
+                    cliente_id = self.obtener_cliente(venta['cliente_data'])
                     if not cliente_id:
                         error_count += 1
                         continue
                     
              
-                    producto_id = self.process_equivalencias_and_get_producto(venta['producto_data'])
+                    producto_id = self.obtener_producto(venta['producto_data'])
                     if not producto_id:
                         error_count += 1
                         continue
@@ -449,7 +429,7 @@ class MongoToDW_ETL:
                         continue
                     
                   
-                    tipo_cambio = self.get_exchange_rate_for_date(fecha)
+                    tipo_cambio = self.tc_dia(fecha)
                     precio_unit_usd = precio_unit_crc / tipo_cambio
                     total_usd = total_crc / tipo_cambio
                     
@@ -473,23 +453,23 @@ class MongoToDW_ETL:
                     
                     if processed_count % 50 == 0:
                         self.sql_connection.commit()
-                        logging.info(f"Procesados {processed_count} registros agregados...")
+                        print(f"Procesados {processed_count} registros agregados...")
                 
                 except Exception as e:
-                    logging.error(f"Error procesando venta agregada: {e}")
+                    print(f"Error procesando venta agregada: {e}")
                     error_count += 1
                     continue
             
            
             self.sql_connection.commit()
             
-            logging.info(f"ETL completado: {processed_count} registros agregados procesados exitosamente")
-            logging.info(f"Errores: {error_count}")
+            print(f"ETL completado: {processed_count} registros agregados procesados exitosamente")
+            print(f"Errores: {error_count}")
             
             return processed_count, ultima_fecha_procesada
             
         except Exception as e:
-            logging.error(f"Error en process_orders: {e}")
+            print(f"Error en procesar_ordenes: {e}")
             raise
     
     def run_etl(self, limit=None):
@@ -497,47 +477,32 @@ class MongoToDW_ETL:
         ultima_fecha_procesada = None
         
         try:
-            logging.info("Iniciando ETL MongoDB -> DW")
+            print("Iniciando ETL MongoDB -> DW")
         
             self.connect_mongo()
             self.connect_sql_server()
             
           
-            processed_count, ultima_fecha_procesada = self.process_orders(limit)
+            processed_count, ultima_fecha_procesada = self.procesar_ordenes(limit)
             
             if processed_count > 0:
-                self.log_execution(
-                    ultima_fecha_procesada, 
-                    processed_count, 
-                    'SUCCESS',
-                    f'ETL completado exitosamente - {processed_count} registros procesados'
-                )
-                logging.info("ETL completado exitosamente")
+                self.registrar_log(ultima_fecha_procesada)
+                print(f"ETL completado exitosamente - {processed_count} registros procesados")
             else:
-                logging.info("No hay datos nuevos para procesar")
+                print("No hay datos nuevos para procesar")
             
         except Exception as e:
-            error_msg = f"Error en ETL: {e}"
-            logging.error(error_msg)
-            
-           
-            if processed_count > 0:
-                self.log_execution(
-                    ultima_fecha_procesada, 
-                    processed_count, 
-                    'ERROR',
-                    error_msg
-                )
+            print(f"Error en ETL: {e}")
             raise
         finally:
             
             if self.mongo_client:
                 self.mongo_client.close()
-                logging.info("Conexión MongoDB cerrada")
+                print("Conexión MongoDB cerrada")
             
             if self.sql_connection:
                 self.sql_connection.close()
-                logging.info("Conexión SQL Server cerrada")
+                print("Conexión SQL Server cerrada")
 
 
 if __name__ == "__main__":
