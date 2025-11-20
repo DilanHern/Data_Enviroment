@@ -65,11 +65,6 @@ def connect_to_database():
 
 
 def load_json_to_equivalencias(json_path: str, upsert=True):
-	"""Carga el JSON y escribe en la tabla `Equivalencias`.
-
-	- `json_path` ruta al archivo JSON (por ejemplo `DatosComunes.json`).
-	- Si `upsert` es True: actualiza registros existentes por `SKU`, si no inserta sólo nuevos.
-	"""
 	if not os.path.exists(json_path):
 		logging.error(f"Archivo no encontrado: {json_path}")
 		return False
@@ -244,24 +239,28 @@ def load_json_to_equivalencias(json_path: str, upsert=True):
 def find_default_json_path():
 	BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 	candidates = [
-		os.path.join(BASE_DIR, "..", "DatosComunes.json"),
-		os.path.join(BASE_DIR, "..", "..", "DatosComunes.json"),
-		os.path.join(BASE_DIR, "DatosComunes.json"),
-		os.path.join(os.getcwd(), "DatosComunes.json"),
+		# Prefer the repository root `equivalencias.json`
+		os.path.join(BASE_DIR, "equivalencias.json"),
+		# Try current working directory
+		os.path.join(os.getcwd(), "equivalencias.json"),
+		# Try one level above repository root
+		os.path.join(BASE_DIR, "..", "equivalencias.json"),
+		# Try relative to this package
+		os.path.join(os.path.dirname(__file__), "..", "..", "equivalencias.json"),
 	]
 
 	for c in candidates:
 		if os.path.exists(c):
 			return c
 
-	# fallback to first candidate
+	# fallback to first candidate (repo root path)
 	return candidates[0]
 
 
 def main():
 	import argparse
 
-	parser = argparse.ArgumentParser(description='Cargar DatosComunes.json en tabla Equivalencias')
+	parser = argparse.ArgumentParser(description='Cargar equivalencias.json en tabla Equivalencias')
 	parser.add_argument('json_path', nargs='?', default=None,
 						help='Ruta al JSON (por defecto busca en rutas relativas al proyecto)')
 	parser.add_argument('--no-upsert', dest='upsert', action='store_false', help='No actualizar registros existentes')
@@ -280,7 +279,7 @@ def main():
 
 	json_path = args.json_path or find_default_json_path()
 	if not os.path.exists(json_path):
-		logging.warning(f"No se encontró 'DatosComunes.json' en rutas candidatas. Se usará por defecto: {json_path}")
+		logging.warning(f"No se encontró 'equivalencias.json' en rutas candidatas. Se usará por defecto: {json_path}")
 
 	success = load_json_to_equivalencias(json_path, upsert=args.upsert)
 	if not success:

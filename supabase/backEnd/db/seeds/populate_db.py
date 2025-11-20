@@ -213,7 +213,8 @@ def insert_products(session, base_url, headers, fake, n, common_rows=None) -> Li
 
 def load_common_products(paths):
     """
-    Buscar y cargar DatosComunes.json desde una lista de rutas candidatas.
+    Buscar y cargar `equivalencias.json` (o un JSON con formato similar)
+    desde una lista de rutas candidatas.
     Devuelve lista de filas (cada fila es dict con claves como en JSON) o None.
     """
     for p in paths:
@@ -221,7 +222,21 @@ def load_common_products(paths):
             try:
                 with open(p, "r", encoding="utf-8") as fh:
                     data = json.load(fh)
-                return data.get("rows", []), p
+                # Soporte para dos formatos comunes:
+                # - El formato antiguo `DatosComunes.json` con una clave "rows": { "rows": [ ... ] }
+                # - El formato de `equivalencias.json` que es una lista top-level: [ {...}, ... ]
+                if isinstance(data, dict) and "rows" in data:
+                    return data.get("rows", []), p
+                if isinstance(data, list):
+                    return data, p
+                # Otros formatos: intentar devolver una lista si tiene elementos candidatos
+                # Buscar claves comunes por si acaso
+                if isinstance(data, dict):
+                    # intentar devolver cualquier valor que sea lista
+                    for v in data.values():
+                        if isinstance(v, list):
+                            return v, p
+                # Si no se reconoce el formato, fallará al siguiente candidato
             except Exception as e:
                 print(f"Error leyendo {p}: {e}", file=sys.stderr)
     return None, None
@@ -364,10 +379,11 @@ def main():
     session = requests.Session()
 
     candidates = [
-        os.path.join(BASE_DIR, "..", "DatosComunes.json"),
-        os.path.join(BASE_DIR, "..", "..", "DatosComunes.json"),
-        os.path.join(BASE_DIR, "DatosComunes.json"),
-        os.path.join(os.getcwd(), "DatosComunes.json"),
+        # posibles ubicaciones relativas para `equivalencias.json` desde `backEnd` (BASE_DIR)
+        os.path.join(BASE_DIR, "..", "equivalencias.json"),
+        os.path.join(BASE_DIR, "..", "..", "equivalencias.json"),
+        os.path.join(BASE_DIR, "equivalencias.json"),
+        os.path.join(os.getcwd(), "equivalencias.json"),
     ]
     common_rows, common_path = load_common_products(candidates)
 
