@@ -1,6 +1,6 @@
 import os
 from typing import Dict, Any, List
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
@@ -9,8 +9,10 @@ from sqlalchemy.exc import SQLAlchemyError
 from dotenv import load_dotenv
 import requests
 import sys
-import pyodbc
+from decimal import Decimal
 import platform
+from collections import defaultdict
+
 
 #Aca se carga el .env.local 
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
@@ -89,30 +91,65 @@ def get_dw_engine():
     odbc_url = urllib.parse.quote_plus(odbc_str)
     return create_engine(f"mssql+pyodbc:///?odbc_connect={odbc_url}")
 
+def a_utc_iso(fecha_str):
+    tz_cr = timezone(timedelta(hours=-6))
+
+    # Parsear fecha local con zona horaria de Costa Rica
+    fecha_local = datetime.fromisoformat(fecha_str).replace(tzinfo=tz_cr)
+
+    # Convertir a UTC (Supabase)
+    fecha_utc = fecha_local.astimezone(timezone.utc)
+
+    return fecha_utc.isoformat()
+
+def utc_a_hora_cr(fecha_str):
+    fecha_utc = datetime.fromisoformat(fecha_str.replace("Z", "+00:00")).astimezone(timezone.utc)
+
+
+    tz_cr = timezone(timedelta(hours=-6))
+    fecha_cr = fecha_utc.astimezone(tz_cr)
+
+    return fecha_cr.date().isoformat()
+
 def traetablassupa(url, headers, table):
     rows: list[dict] = []
     offset = 0
+    batch_size = 1000  # cuántas filas trae por viaje
     try:
-        params = {"select": "*", "offset": offset}
-        resp = requests.get(f"{url}/rest/v1/{table}", headers=headers, params=params, timeout=30)
-        resp.raise_for_status()
-        batch = resp.json()
-        rows.extend(batch)
+        while True:
+            params = {
+                "select": "*",
+                "limit": batch_size,
+                "offset": offset
+            }
+            resp = requests.get(
+                f"{url}/rest/v1/{table}",
+                headers=headers,
+                params=params,
+                timeout=30
+            )
+            resp.raise_for_status()
+            batch = resp.json()
+            if not batch:
+                break
+            rows.extend(batch)
+            offset += batch_size
+
     except Exception as e:
         print(f"Error al consultar Supabase: {e}", file=sys.stderr)
         raise
     return rows
 
+
 def traetablassql(engine, table):
-    limit = None
     rows: list[dict] = []
     try:
-        query = text(f"SELECT * FROM {table}" + (f" LIMIT {limit}" if limit is not None else ""))
+        query = text(f"SELECT * FROM {table}")
         with engine.connect() as conn:
             result = conn.execute(query)
             colums = result.keys()
             for row in result.fetchall():
-                rows.append(dict(zip(colums, row))) # Zip junta la columna con el valor de la fila, si la columna es id y el valor 1 queda {'id':1}
+                rows.append(dict(zip(colums, row)))
     except SQLAlchemyError as e:
         print(f"Error al consultar SQL: {e}", file=sys.stderr)
         raise
@@ -163,12 +200,232 @@ def transformadoryloadsupaclientes(engine, supa, clientestable):
             )
             emailexistente.append(email)
 
-def transformadoryloadsupaVENTAS(engine, ordenes, ordenesdetalle, clientestable, sqltablafecha):
-    print(sqltablafecha)
+
+ETL_DIR = os.path.dirname(__file__)
+LOG_DIR = os.path.join(ETL_DIR, "logVentasETLFechasIngreso")
+LOG_PATH = os.path.join(LOG_DIR, "logVentasIngreso.txt")
+LOG_FECHA_DEFAULT = "1900-12-31T00:00:00"
+
+def crearlogetlventas(fecha):
+    os.makedirs(os.path.dirname(LOG_PATH), exist_ok=True)
+    with open(LOG_PATH, "a", encoding="utf-8") as f:
+        f.write(str(fecha) + "\n")
+
+
+def consultarlogetlventas():
+    try:
+        with open(LOG_PATH, "r", encoding="utf-8") as f:
+            lineas = f.read().strip().splitlines()
+
+        if not lineas:
+            crearlogetlventas(LOG_FECHA_DEFAULT)
+            return LOG_FECHA_DEFAULT
+
+        ultima = lineas[-1].strip()
+
+        try:
+            dt = datetime.fromisoformat(ultima.replace("Z", ""))
+            return dt.isoformat()
+        except ValueError:
+            crearlogetlventas(LOG_FECHA_DEFAULT)
+            return LOG_FECHA_DEFAULT
+
+    except FileNotFoundError:
+        crearlogetlventas(LOG_FECHA_DEFAULT)
+        return LOG_FECHA_DEFAULT
+
+def traer_ordenes_por_fecha_supa(url, headers, fecha_min, fecha_max):
+    rows = []
+    offset = 0
+    batch_size = 1000
+
+    try:
+        while True:
+            params = [
+                ("select", "*"),
+                ("fecha", f"gte.{fecha_min}"),
+                ("fecha", f"lte.{fecha_max}"),
+                ("order", "fecha.asc"),
+                ("limit", batch_size),
+                ("offset", offset)
+            ]
+
+            resp = requests.get(
+                f"{url}/rest/v1/orden",
+                headers=headers,
+                params=params,
+                timeout=30
+            )
+            resp.raise_for_status()
+
+            batch = resp.json()
+            if not batch:
+                break
+
+            rows.extend(batch)
+            offset += batch_size
+
+    except Exception as e:
+        print(f"Error al consultar Supabase: {e}", file=sys.stderr)
+        raise
+
+    crearlogetlventas(fecha_max)
+    return rows
+
+def diccionario_ordenes_por_cliente_fecha(ordenesfecha):
+    ordenes_cliente_fecha = defaultdict(lambda: defaultdict(list))
+
+    for o in ordenesfecha:
+        cliente = o["cliente_id"]
+        fecha = utc_a_hora_cr(o["fecha"])
+        ordenes_cliente_fecha[cliente][fecha].append(o["orden_id"])
+
+    return ordenes_cliente_fecha
+
+def agrupar_con_detalles(ordenes_cliente_fecha, url, headers):
+    # 1. Traer TODOS los detalles de supabase en una sola llamada grande
+    detalles_tabla = traetablassupa(url, headers, "orden_detalle")  
+
+    # 2. Indexar por orden_id para buscar rápido
+    index_detalles = defaultdict(list)
+    for det in detalles_tabla:
+        index_detalles[det["orden_id"]].append(det)
+
+    # 3. Diccionario final: cliente → fecha → producto → métricas
+    resultado = defaultdict(
+        lambda: defaultdict(
+            lambda: defaultdict(
+                lambda: {"cantidad_total": 0, "monto_total": 0}
+            )
+        )
+    )
+
+    # 4. JUNTA EN CASO DE QUE HAYA UN CLIENTE CON MISMO PEDIDO DE PRODUCTO EN EL MISMO DIA VARIAS VECES
+    for cliente, fechas in ordenes_cliente_fecha.items():
+        for fecha, ordenes in fechas.items():
+            for orden_id in ordenes:
+
+                # Obtener detalles de ese orden
+                detalles = index_detalles.get(orden_id, [])
+
+                # Acumular por producto
+                for det in detalles:
+                    producto = det["producto_id"]
+                    cantidad = det["cantidad"]
+                    precio = det["precio_unit"]
+
+                    resultado[cliente][fecha][producto]["cantidad_total"] += cantidad
+                    resultado[cliente][fecha][producto]["monto_total"] += cantidad * precio
+
+    return resultado
+
+def findFechaId(sqltablafecha, fechaconsegundos):
+    fecha_str = fechaconsegundos[:10]
+    fecha_obj = datetime.strptime(fecha_str, "%Y-%m-%d").date()
+
+    for row in sqltablafecha:
+        if row["Fecha"] == fecha_obj:
+            return row["IdTiempo"]
+
+    print(f"NO SE ENCONTRO UNA FECHA ({fecha_str}) - ESTE ERROR ES POR LLENADO DE FECHAS NO POR EL SCRIPT")
+    return None
+
+mapa_emails: dict = {}
+mapa_sku: dict = {}
+
+def init_mapas(url: str | None = None, headers: dict | None = None):
+    global mapa_emails, mapa_sku
+    if not url or not headers:
+        url, headers = get_supabase_client()
+    mapa_emails = {c["cliente_id"]: c.get("email") for c in traetablassupa(url, headers, "cliente")}
+    mapa_sku = {p["producto_id"]: p.get("sku") for p in traetablassupa(url, headers, "producto")}
+
+def findClienteId(sqltablacliente, clienteobj):
+    email = mapa_emails.get(clienteobj)
+    for row in sqltablacliente:
+        if row["Email"] == email:
+            return row["IdCliente"]
+
+    print(f"NO SE ENCONTRO UN CLIENTE, ESTE ES ERROR DEL SCRIPT DE LLENADO DE CLIENTES ({email})")
+    return None
+
+def findProductoId(sqltablaproducto, productobj):
+    sku = mapa_sku.get(productobj)
+    for row in sqltablaproducto:
+        if row["SKU"] == sku:
+            return row["IdProducto"]
+
+    print(f"NO SE ENCONTRO UN PRODUCTO, ESTE ES ERROR DEL SCRIPT DE LLENADO DE PRODUCTO ({sku})")
+    return None
+
+
+def transformadoryloadsupaVENTAS(engine, url, headers, ordenesfecha, sqltablafecha, sqltablacliente, sqltablaproducto):
+    ordenes_cliente_fecha = diccionario_ordenes_por_cliente_fecha(ordenesfecha)
+    ordenes_cliente_fecha_producto_metricas = agrupar_con_detalles(ordenes_cliente_fecha, url, headers)
+    with engine.begin() as conn:
+        for cliente, fechas in ordenes_cliente_fecha_producto_metricas.items():
+            idcliente = findClienteId( sqltablacliente, cliente)
+            if idcliente is None:
+                print("Clienteid no existe conforme a esa factura")
+                continue
+            for fecha, productos in fechas.items():
+                idtiempo = findFechaId(sqltablafecha, fecha)
+                if idtiempo is None:
+                    continue
+                for producto, metricas in productos.items():
+                    idproducto = findProductoId(sqltablaproducto ,producto)
+                    total = metricas["monto_total"]
+                    cantidad = metricas["cantidad_total"]
+                    precio_unitario = total / cantidad if cantidad != 0 else 0
+                    row = conn.execute(
+                        text("""
+                            SELECT IdFactVentas, TotalVentas, Cantidad
+                            FROM dbo.FactVentas WHERE IdTiempo = :IdTiempo AND IdProducto = :IdProducto AND IdCliente = :IdCliente"""),
+                        {"IdTiempo": idtiempo,"IdProducto": idproducto,"IdCliente": idcliente}).fetchone()
+
+                    if row:
+                        #Si ya existe entonces actualiza los datos en la tabla fact ventas
+                        idfact = row[0]
+
+                        total_prev = Decimal(row[1])           # viene como Decimal pero lo envolvemos por seguridad
+                        cantidad_prev = Decimal(row[2])
+
+                        total = Decimal(str(total))            # convertir el "total" del ETL a Decimal
+                        cantidad = Decimal(str(cantidad))      # convertir la cantidad a Decimal
+
+                        nuevo_total = total_prev + total
+                        nueva_cantidad = cantidad_prev + cantidad
+
+                        nuevo_precio = (nuevo_total / nueva_cantidad if nueva_cantidad != 0 else Decimal("0"))
+
+                        conn.execute(
+                            text("""
+                                UPDATE dbo.FactVentas
+                                SET TotalVentas = :TotalVentas, Cantidad = :Cantidad, Precio = :Precio WHERE IdFactVentas = :IdFactVentas
+                            """),{"TotalVentas": nuevo_total,"Cantidad": nueva_cantidad,"Precio": nuevo_precio,"IdFactVentas": idfact})
+                    else:
+                        #Si no existe solo hace un insert y ya
+                        conn.execute(
+                            text("""
+                                INSERT INTO dbo.FactVentas 
+                                (IdTiempo, IdProducto, IdCliente, TotalVentas, Cantidad, Precio)
+                                VALUES (:IdTiempo, :IdProducto, :IdCliente, :TotalVentas, :Cantidad, :Precio)
+                            """),
+                            {
+                                "IdTiempo": idtiempo,
+                                "IdProducto": idproducto,
+                                "IdCliente": idcliente,
+                                "TotalVentas": total,
+                                "Cantidad": cantidad,
+                                "Precio": precio_unitario
+                            }
+                        )
+
 
 def run_etl():
     ### AQUI VA EL PIPELINE (EXTRACT DE SUPA Y DESPUES LOAD A SQL UNA VEZ FUE TRANSFORMADO);
     url, headers = get_supabase_client()
+
     contenidosclientessupa = traetablassupa(url, headers, "cliente")
     contenidosordenessupa = traetablassupa(url, headers, "orden")
     contenidosdetallessupa = traetablassupa(url, headers, "orden_detalle")
@@ -178,7 +435,10 @@ def run_etl():
     contenidosproductossql = traetablassql(enginesql, "dbo.DimProducto")
     contenidoequivalencias = traetablassql(enginesql, "dbo.Equivalencias")
     contenidoclientessql = traetablassql(enginesql, "dbo.DimCliente")
+    factVentas = traetablassql(enginesql, "dbo.FactVentas")
     tablafecha = traetablassql(enginesql, "dbo.DimTiempo")
+    
+    init_mapas(url, headers)
 
     #crea productos y sus equivalencias o en su defecto revisa equivalencias en dw
     transformadoryloadsupaproductos(enginesql, contenidosproductossupa, contenidosproductossql ,contenidoequivalencias)
@@ -186,9 +446,20 @@ def run_etl():
     #crea clientes en dw
     transformadoryloadsupaclientes(enginesql, contenidosclientessupa, contenidoclientessql)
 
+    contenidosproductossql = traetablassql(enginesql, "dbo.DimProducto")
+    contenidoclientessql = traetablassql(enginesql, "dbo.DimCliente")
+
+    #Fecha despues del ultimo insertado en factventas (se sabe mediante el log)
+    fecha_min = consultarlogetlventas()
+    fecha_max_local = datetime.now().isoformat()
+    fecha_max = a_utc_iso(fecha_max_local)    
+
+    ordenesdetalle = traer_ordenes_por_fecha_supa(url,headers,fecha_min,fecha_max)
     #para crear las ventas hechas a un cliente de un producto en un dia
-    transformadoryloadsupaVENTAS(enginesql, contenidosordenessupa, contenidosdetallessupa, contenidosclientessupa, tablafecha)
+    transformadoryloadsupaVENTAS(enginesql, url, headers, ordenesdetalle, tablafecha, contenidoclientessql, contenidosproductossql)
     #print(contenidosproductossql)
+
+    print("ETL COMPLETADO CON EXITO")
 
 
 if __name__ == "__main__":
