@@ -108,14 +108,16 @@ def update_order_totals(cursor):
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Populate sales_ms DB with fake data (420 rows per table by default)')
+    parser = argparse.ArgumentParser(description='Populate sales_ms DB with fake data')
     parser.add_argument('--server', default='localhost', help='SQL Server host')
     parser.add_argument('--database', default='ventas_ms', help='Database name')
     parser.add_argument('--username', help='DB username (if not using integrated auth)')
     parser.add_argument('--password', help='DB password')
     parser.add_argument('--trusted', action='store_true', help='Use Trusted Connection (Windows auth). If set, username/password are ignored')
     parser.add_argument('--driver', default='ODBC Driver 17 for SQL Server', help='ODBC Driver name')
-    parser.add_argument('--rows', type=int, default=420, help='Rows per table (default 420)')
+    parser.add_argument('--clientes', type=int, default=600, help='Número de clientes (default 600)')
+    parser.add_argument('--productos', type=int, default=420, help='Número de productos (default 420)')
+    parser.add_argument('--ordenes', type=int, default=5000, help='Número de órdenes (default 5000)')
 
     args = parser.parse_args()
 
@@ -129,34 +131,34 @@ def main():
     with pyodbc.connect(conn_str, autocommit=False) as conn:
         cursor = conn.cursor()
 
-        rows = args.rows
-        print(f'Insertando {rows} clientes...')
-        # get base id to identify newly inserted rows
+        # Insertar clientes (600 por defecto)
+        print(f'Insertando {args.clientes} clientes...')
         cursor.execute("SELECT ISNULL(MAX(ClienteId), 0) FROM sales_ms.Cliente")
         base_client = cursor.fetchone()[0]
-        insert_clients(cursor, fake, rows)
+        insert_clients(cursor, fake, args.clientes)
         conn.commit()
         cursor.execute("SELECT ClienteId FROM sales_ms.Cliente WHERE ClienteId > ? ORDER BY ClienteId", base_client)
         client_ids = [r[0] for r in cursor.fetchall()]
 
-        print(f'Insertando {rows} productos...')
+        # Insertar productos (420 por defecto)
+        print(f'Insertando {args.productos} productos...')
         cursor.execute("SELECT ISNULL(MAX(ProductoId), 0) FROM sales_ms.Producto")
         base_product = cursor.fetchone()[0]
-        insert_products(cursor, fake, rows)
+        insert_products(cursor, fake, args.productos)
         conn.commit()
         cursor.execute("SELECT ProductoId FROM sales_ms.Producto WHERE ProductoId > ? ORDER BY ProductoId", base_product)
         product_ids = [r[0] for r in cursor.fetchall()]
 
-        print(f'Insertando {rows} órdenes (Total inicial 0)...')
+        # Insertar órdenes (5000 por defecto)
+        print(f'Insertando {args.ordenes} órdenes (Total inicial 0)...')
         cursor.execute("SELECT ISNULL(MAX(OrdenId), 0) FROM sales_ms.Orden")
         base_order = cursor.fetchone()[0]
-        insert_orders(cursor, fake, rows, client_ids)
+        insert_orders(cursor, fake, args.ordenes, client_ids)
         conn.commit()
         cursor.execute("SELECT OrdenId FROM sales_ms.Orden WHERE OrdenId > ? ORDER BY OrdenId", base_order)
         order_ids = [r[0] for r in cursor.fetchall()]
 
-        # Ensure every order has at least one detail. We'll create exactly one detail per order
-        # so the total OrdenDetalle rows == rows (420 by default).
+        # Insertar detalles (uno por orden)
         print(f'Insertando {len(order_ids)} detalles de orden (uno por orden insertada)...')
         insert_order_details(cursor, order_ids, product_ids, fake)
         conn.commit()
