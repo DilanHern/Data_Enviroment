@@ -27,7 +27,7 @@ function generateSkuFromMongoCode(codigoMongo) {
 }
 
 
-const datosComunes = JSON.parse(fs.readFileSync(path.join(__dirname, '../../../DatosComunes.json'), 'utf8'));
+const equivalencias = JSON.parse(fs.readFileSync(path.join(__dirname, '../../../equivalencias.json'), 'utf8'));
 
 
 const nombres = [
@@ -77,16 +77,21 @@ function generarProductos() {
   const productos = [];
   
  
-  datosComunes.rows.forEach((item, index) => {
-    const equivalencias = {
+  equivalencias.forEach((item, index) => {
+    const equivalenciasObj = {
       sku: item.SKU  
     };
     
+    
+    if (item.CodigoAlt) {
+      equivalenciasObj.codigo_alt = item.CodigoAlt;
+    }
+    
     productos.push({
-      codigo_mongo: `MN-${String(index + 1).padStart(4, '0')}`,
-      nombre: item.Nombre,
-      categoria: item.Categoria,
-      equivalencias: equivalencias
+      codigo_mongo: item.CodigoMongo,
+      nombre: item.nombre,
+      categoria: item.categoria,
+      equivalencias: equivalenciasObj
     });
   });
   
@@ -114,7 +119,7 @@ function generarProductos() {
     'Electrónica', 'Hogar', 'Cocina', 'Panadería', 'Lácteos'
   ];
   
-  for (let i = datosComunes.rows.length; i < 250; i++) {
+  for (let i = equivalencias.length; i < 250; i++) {
     const nombre = productosAdicionales[Math.floor(Math.random() * productosAdicionales.length)];
     const categoria = categoriasAdicionales[Math.floor(Math.random() * categoriasAdicionales.length)];
     const codigoMongo = `MN-${String(i + 1).padStart(4, '0')}`;
