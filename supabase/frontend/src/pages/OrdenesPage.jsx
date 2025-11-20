@@ -73,10 +73,12 @@ function OrdenForm({ orden, onSave, onCancel }) {
         canal: orden.canal,
         moneda: orden.moneda,
         total: orden.total,
+        // orden.orden_detalle may include a nested `producto` object (from supabase join)
         items: (orden.orden_detalle || []).map(i => ({
-          producto_id: String(i.producto_id),
-          cantidad: i.cantidad,
-          precio_unit: i.precio_unit
+          // prefer nested producto.producto_id, fallback to producto_id at root
+          producto_id: String(i.producto?.producto_id ?? i.producto_id ?? ''),
+          cantidad: i.cantidad ?? i.qty ?? 1,
+          precio_unit: i.precio_unit ?? i.precio ?? 0
         })),
         // coupons/medadatos removed — backend does not accept cupon
       })

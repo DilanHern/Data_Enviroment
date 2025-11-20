@@ -24,21 +24,26 @@ def generate_sku_from_name_category(nombre: str, categoria: str, existing_skus: 
 
     h = int(hashlib.sha1(base_raw.encode("utf-8")).hexdigest(), 16)
     digits = h % 10000  # 0000-9999
-    letter = chr(ord("A") + ((h >> 16) % 26))
+    letter1 = chr(ord("A") + ((h >> 16) % 26))
+    letter2 = chr(ord("A") + ((h >> 21) % 26))
 
-    sku = f"PRD-{digits:04d}-{letter}"
+    sku = f"PRD-{digits:04d}-{letter1}{letter2}"
 
     attempts = 0
+    # primero iteramos cambiando la parte numérica para evitar colisiones
     while sku in existing_upper and attempts < 10000:
         digits = (digits + 1) % 10000
-        sku = f"PRD-{digits:04d}-{letter}"
+        sku = f"PRD-{digits:04d}-{letter1}{letter2}"
         attempts += 1
 
+    # si todavía colisiona, iteramos sobre combinaciones de dos letras
     if sku in existing_upper:
         extra = 0
-        while sku in existing_upper and extra < 26:
-            letter2 = chr(ord("A") + extra)
-            sku = f"PRD-{digits:04d}-{letter2}"
+        max_extra = 26 * 26
+        while sku in existing_upper and extra < max_extra:
+            l1 = chr(ord("A") + (extra // 26))
+            l2 = chr(ord("A") + (extra % 26))
+            sku = f"PRD-{digits:04d}-{l1}{l2}"
             extra += 1
 
     return sku.upper()
