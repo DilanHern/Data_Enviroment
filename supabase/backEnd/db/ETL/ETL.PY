@@ -142,15 +142,14 @@ def traetablassupa(url, headers, table):
 
 
 def traetablassql(engine, table):
-    limit = None
     rows: list[dict] = []
     try:
-        query = text(f"SELECT * FROM {table}" + (f" LIMIT {limit}" if limit is not None else ""))
+        query = text(f"SELECT * FROM {table}")
         with engine.connect() as conn:
             result = conn.execute(query)
             colums = result.keys()
             for row in result.fetchall():
-                rows.append(dict(zip(colums, row))) # Zip junta la columna con el valor de la fila, si la columna es id y el valor 1 queda {'id':1}
+                rows.append(dict(zip(colums, row)))
     except SQLAlchemyError as e:
         print(f"Error al consultar SQL: {e}", file=sys.stderr)
         raise
@@ -202,11 +201,13 @@ def transformadoryloadsupaclientes(engine, supa, clientestable):
             emailexistente.append(email)
 
 
-BASE_DIR = os.path.dirname(__file__)
-LOG_PATH = os.path.join(BASE_DIR, "logVentasETLFechasIngreso", "logVentasIngreso.txt")
+ETL_DIR = os.path.dirname(__file__)
+LOG_DIR = os.path.join(ETL_DIR, "logVentasETLFechasIngreso")
+LOG_PATH = os.path.join(LOG_DIR, "logVentasIngreso.txt")
 LOG_FECHA_DEFAULT = "1900-12-31T00:00:00"
 
 def crearlogetlventas(fecha):
+    os.makedirs(os.path.dirname(LOG_PATH), exist_ok=True)
     with open(LOG_PATH, "a", encoding="utf-8") as f:
         f.write(str(fecha) + "\n")
 
@@ -329,9 +330,15 @@ def findFechaId(sqltablafecha, fechaconsegundos):
     print(f"NO SE ENCONTRO UNA FECHA ({fecha_str}) - ESTE ERROR ES POR LLENADO DE FECHAS NO POR EL SCRIPT")
     return None
 
-url, headers = get_supabase_client()
-mapa_emails = {c["cliente_id"]: c["email"] for c in traetablassupa(url, headers, "cliente")}
-mapa_sku = {p["producto_id"]: p["sku"]for p in traetablassupa(url, headers, "producto")}
+mapa_emails: dict = {}
+mapa_sku: dict = {}
+
+def init_mapas(url: str | None = None, headers: dict | None = None):
+    global mapa_emails, mapa_sku
+    if not url or not headers:
+        url, headers = get_supabase_client()
+    mapa_emails = {c["cliente_id"]: c.get("email") for c in traetablassupa(url, headers, "cliente")}
+    mapa_sku = {p["producto_id"]: p.get("sku") for p in traetablassupa(url, headers, "producto")}
 
 def findClienteId(sqltablacliente, clienteobj):
     email = mapa_emails.get(clienteobj)
@@ -417,6 +424,8 @@ def transformadoryloadsupaVENTAS(engine, url, headers, ordenesfecha, sqltablafec
 
 def run_etl():
     ### AQUI VA EL PIPELINE (EXTRACT DE SUPA Y DESPUES LOAD A SQL UNA VEZ FUE TRANSFORMADO);
+    url, headers = get_supabase_client()
+
     contenidosclientessupa = traetablassupa(url, headers, "cliente")
     contenidosordenessupa = traetablassupa(url, headers, "orden")
     contenidosdetallessupa = traetablassupa(url, headers, "orden_detalle")
@@ -428,6 +437,8 @@ def run_etl():
     contenidoclientessql = traetablassql(enginesql, "dbo.DimCliente")
     factVentas = traetablassql(enginesql, "dbo.FactVentas")
     tablafecha = traetablassql(enginesql, "dbo.DimTiempo")
+    
+    init_mapas(url, headers)
 
     #crea productos y sus equivalencias o en su defecto revisa equivalencias en dw
     transformadoryloadsupaproductos(enginesql, contenidosproductossupa, contenidosproductossql ,contenidoequivalencias)
