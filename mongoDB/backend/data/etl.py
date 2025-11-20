@@ -4,6 +4,7 @@ import logging
 from datetime import datetime, timedelta
 import platform
 import os
+import json
 from dotenv import load_dotenv
 
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '..', '.env'))
@@ -19,7 +20,7 @@ class MongoToDW_ETL:
         
         self.mongo_uri = os.getenv("MONGODB_URI")
         if not self.mongo_uri:
-            raise ValueError("MONGODB_URI no encontrada en variables de entorno")
+            raise ValueError("Falta poner el MONGODB_URI en el .env ")
         
         self.mongo_client = None
         self.mongo_db = None
@@ -36,6 +37,8 @@ class MongoToDW_ETL:
         
         self.sql_connection = None
 
+    
+        self.log_file_path = os.path.join(os.path.dirname(__file__), 'etl_execution.log')
 
         self.genero_mapping = {
             'Masculino': 'M',
@@ -44,6 +47,7 @@ class MongoToDW_ETL:
         }
         
     def generate_sku_from_mongo_code(self, codigo_mongo):
+        #si tenemos el codigo de mongo pero no el sku lo tenemos que generar para ponerlo en el dimproducto
 
         if not codigo_mongo:
             return None
@@ -57,12 +61,60 @@ class MongoToDW_ETL:
             hash_object = hashlib.md5(numero.encode())
             hash_hex = hash_object.hexdigest()
             # Tomar los primeros 2 caracteres hexadecimales y convertirlos a letras A-P
-            char1 = chr(ord('A') + int(hash_hex[0], 16))  # 0-15 -> A-P
-            char2 = chr(ord('A') + int(hash_hex[1], 16))  # 0-15 -> A-P
+            char1 = chr(ord('A') + int(hash_hex[0], 16))  
+            char2 = chr(ord('A') + int(hash_hex[1], 16))  
             return f'PRD-{numero}-{char1}{char2}'
         else:
             return f'PRD-{codigo_mongo.replace("-", "")[:4].upper()}-XX'
         
+    def get_last_execution_info(self):
+        # esta es la parte que evita que metamos duplicados o así
+        try:
+            if not os.path.exists(self.log_file_path):
+                logging.info("Primera ejecución del etl")
+                return None
+            
+            last_successful_execution = None
+            with open(self.log_file_path, 'r', encoding='utf-8') as f:
+                for line in f:
+                    try:
+                        log_entry = json.loads(line.strip())
+                        if log_entry.get('estado') == 'SUCCESS':
+                            last_successful_execution = log_entry
+                    except json.JSONDecodeError:
+                        continue
+            
+            if last_successful_execution and last_successful_execution.get('ultima_fecha_procesada'):
+                last_date = datetime.strptime(last_successful_execution['ultima_fecha_procesada'], '%Y-%m-%d').date()
+                logging.info(f"Última ejecución exitosa encontrada: {last_date} - {last_successful_execution['registros_procesados']} registros")
+                return last_date
+            else:
+                logging.info("No se encontraron ejecuciones exitosas previas en el log")
+                return None
+                
+        except Exception as e:
+            logging.error(f"Error leyendo archivo de log: {e}")
+            return None
+    
+    def log_execution(self, ultima_fecha_procesada, registros_procesados, estado, mensaje=None):
+        
+        try:
+            log_entry = {
+                'timestamp': datetime.now().isoformat(),
+                'ultima_fecha_procesada': ultima_fecha_procesada.strftime('%Y-%m-%d') if ultima_fecha_procesada else None,
+                'registros_procesados': registros_procesados,
+                'estado': estado,
+                'mensaje': mensaje
+            }
+            
+            with open(self.log_file_path, 'a', encoding='utf-8') as f:
+                f.write(json.dumps(log_entry) + '\n')
+                
+            logging.info(f"Ejecución registrada en log: {estado} - {registros_procesados} registros - Fecha: {ultima_fecha_procesada}")
+            
+        except Exception as e:
+            logging.error(f"Error escribiendo en archivo de log: {e}")
+    
     def connect_mongo(self):
         try:
             self.mongo_client = pymongo.MongoClient(self.mongo_uri)
@@ -271,9 +323,12 @@ class MongoToDW_ETL:
     
     def process_orders(self, limit=None):
         try:
+            
+            last_execution_date = self.get_last_execution_info()
+            
             ordenes_collection = self.mongo_db['ordenes']
             
-        
+           
             pipeline = [
                 {
                     '$lookup': {
@@ -299,7 +354,26 @@ class MongoToDW_ETL:
                 },
                 {
                     '$unwind': '$producto_data'
-                },
+                }
+            ]
+            
+            # para no meter repetidos!!!!
+            if last_execution_date:
+                next_day = last_execution_date + timedelta(days=1)
+                date_filter = {
+                    '$match': {
+                        'fecha': {
+                            '$gte': datetime.combine(next_day, datetime.min.time())
+                        }
+                    }
+                }
+                pipeline.insert(0, date_filter)  
+                logging.info(f"Analizando órdenes posteriores al: {next_day}")
+            else:
+                logging.info("Primera ejecución - procesando todas las órdenes")
+            
+           
+            pipeline.extend([
                 {
                     '$addFields': {
                         'fecha_solo': {
@@ -328,16 +402,21 @@ class MongoToDW_ETL:
                         'total_ventas_crc': {'$sum': '$total_item'}
                     }
                 }
-            ]
+            ])
             
             if limit:
                 pipeline.append({'$limit': limit})
             
             ventas_agregadas = list(ordenes_collection.aggregate(pipeline))
+            
+            if not ventas_agregadas:
+                return 0, None
+            
             logging.info(f"Procesando {len(ventas_agregadas)} ventas agregadas por cliente/producto/día")
             
             processed_count = 0
             error_count = 0
+            ultima_fecha_procesada = None
             
             for venta in ventas_agregadas:
                 try:
@@ -346,6 +425,10 @@ class MongoToDW_ETL:
                     cantidad_total = venta['cantidad_total']
                     total_crc = venta['total_ventas_crc']
                     precio_unit_crc = venta['precio_unit']  
+                    
+                    
+                    if not ultima_fecha_procesada or fecha.date() > ultima_fecha_procesada:
+                        ultima_fecha_procesada = fecha.date()
                     
                     
                     cliente_id = self.get_or_create_cliente(venta['cliente_data'])
@@ -403,26 +486,48 @@ class MongoToDW_ETL:
             logging.info(f"ETL completado: {processed_count} registros agregados procesados exitosamente")
             logging.info(f"Errores: {error_count}")
             
+            return processed_count, ultima_fecha_procesada
+            
         except Exception as e:
             logging.error(f"Error en process_orders: {e}")
             raise
     
     def run_etl(self, limit=None):
-        """Ejecuta el proceso completo de ETL"""
+        processed_count = 0
+        ultima_fecha_procesada = None
+        
         try:
             logging.info("Iniciando ETL MongoDB -> DW")
-            
-            
+        
             self.connect_mongo()
             self.connect_sql_server()
             
-           
-            self.process_orders(limit)
+          
+            processed_count, ultima_fecha_procesada = self.process_orders(limit)
             
-            logging.info("ETL completado exitosamente")
+            if processed_count > 0:
+                self.log_execution(
+                    ultima_fecha_procesada, 
+                    processed_count, 
+                    'SUCCESS',
+                    f'ETL completado exitosamente - {processed_count} registros procesados'
+                )
+                logging.info("ETL completado exitosamente")
+            else:
+                logging.info("No hay datos nuevos para procesar")
             
         except Exception as e:
-            logging.error(f"Error en ETL: {e}")
+            error_msg = f"Error en ETL: {e}"
+            logging.error(error_msg)
+            
+           
+            if processed_count > 0:
+                self.log_execution(
+                    ultima_fecha_procesada, 
+                    processed_count, 
+                    'ERROR',
+                    error_msg
+                )
             raise
         finally:
             
