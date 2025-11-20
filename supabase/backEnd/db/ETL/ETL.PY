@@ -321,17 +321,44 @@ def findFechaId(sqltablafecha, fechaconsegundos):
     print(f"NO SE ENCONTRO UNA FECHA ({fecha_str}) - ESTE ERROR ES POR LLENADO DE FECHAS NO POR EL SCRIPT")
     return None
 
-def transformadoryloadsupaVENTAS(engine, url, headers, ordenesfecha, sqltablafecha):
+url, headers = get_supabase_client()
+mapa_emails = {c["cliente_id"]: c["email"] for c in traetablassupa(url, headers, "cliente")}
+mapa_sku = {p["producto_id"]: p["sku"]for p in traetablassupa(url, headers, "producto")}
+
+def findClienteId(sqltablacliente, clienteobj):
+    email = mapa_emails.get(clienteobj)
+    for row in sqltablacliente:
+        if row["Email"] == email:
+            return row["IdCliente"]
+
+    print(f"NO SE ENCONTRO UN CLIENTE, ESTE ES ERROR DEL SCRIPT DE LLENADO DE CLIENTES ({email})")
+    return None
+
+def findProductoId(sqltablaproducto, productobj):
+    sku = mapa_sku.get(productobj)
+    for row in sqltablaproducto:
+        if row["SKU"] == sku:
+            return row["IdProducto"]
+
+    print(f"NO SE ENCONTRO UN PRODUCTO, ESTE ES ERROR DEL SCRIPT DE LLENADO DE PRODUCTO ({sku})")
+    return None
+
+
+def transformadoryloadsupaVENTAS(engine, url, headers, ordenesfecha, sqltablafecha, sqltablacliente, sqltablaproducto):
     ordenes_cliente_fecha = diccionario_ordenes_por_cliente_fecha(ordenesfecha)
     ordenes_cliente_fecha_producto_metricas = agrupar_con_detalles(ordenes_cliente_fecha, url, headers)
     with engine.begin() as conn:
         for cliente, fechas in ordenes_cliente_fecha_producto_metricas.items():
+            idcliente = findClienteId( sqltablacliente, cliente)
+            if idcliente is None:
+                print("Clienteid no existe conforme a esa factura")
+                continue
             for fecha, productos in fechas.items():
                 idtiempo = findFechaId(sqltablafecha, fecha)
                 if idtiempo is None:
                     continue
                 for producto, metricas in productos.items():
-
+                    idproducto = findProductoId(sqltablaproducto ,producto)
                     total = metricas["monto_total"]
                     cantidad = metricas["cantidad_total"]
                     precio_unitario = total / cantidad if cantidad != 0 else 0
@@ -344,8 +371,8 @@ def transformadoryloadsupaVENTAS(engine, url, headers, ordenesfecha, sqltablafec
                         """),
                         {
                             "IdTiempo": idtiempo,
-                            "IdProducto": producto,
-                            "IdCliente": cliente,
+                            "IdProducto": idproducto,
+                            "IdCliente": idcliente,
                             "TotalVentas": total,
                             "Cantidad": cantidad,
                             "Precio": precio_unitario
@@ -355,7 +382,6 @@ def transformadoryloadsupaVENTAS(engine, url, headers, ordenesfecha, sqltablafec
 
 def run_etl():
     ### AQUI VA EL PIPELINE (EXTRACT DE SUPA Y DESPUES LOAD A SQL UNA VEZ FUE TRANSFORMADO);
-    url, headers = get_supabase_client()
     contenidosclientessupa = traetablassupa(url, headers, "cliente")
     contenidosordenessupa = traetablassupa(url, headers, "orden")
     contenidosdetallessupa = traetablassupa(url, headers, "orden_detalle")
@@ -384,7 +410,7 @@ def run_etl():
 
     ordenesdetalle = traer_ordenes_por_fecha_supa(url,headers,fecha_min,fecha_max)
     #para crear las ventas hechas a un cliente de un producto en un dia
-    transformadoryloadsupaVENTAS(enginesql, url, headers, ordenesdetalle, tablafecha)
+    transformadoryloadsupaVENTAS(enginesql, url, headers, ordenesdetalle, tablafecha, contenidoclientessql, contenidosproductossql)
     #print(contenidosproductossql)
 
     print("ETL COMPLETADO CON EXITO")
