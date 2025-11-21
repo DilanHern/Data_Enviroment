@@ -38,12 +38,20 @@ CREATE TABLE DimProducto (
 );
 GO
 
+-- TABLA DIMENSION CANAL
+CREATE TABLE DimCanal (
+    IdCanal INT IDENTITY(1,1) PRIMARY KEY,
+    Nombre VARCHAR(50) NOT NULL
+);
+GO
+
 -- TABLA HECHOS: FACTVENTAS
 CREATE TABLE FactVentas (
     IdFactVentas INT IDENTITY(1,1) PRIMARY KEY,
     IdTiempo INT NOT NULL,
     IdProducto INT NOT NULL,
     IdCliente INT NOT NULL,
+    IdCanal INT NOT NULL,
     TotalVentas DECIMAL(18,2),
     Cantidad INT,
     Precio DECIMAL(18,2),
@@ -55,7 +63,10 @@ CREATE TABLE FactVentas (
         REFERENCES DimProducto(IdProducto),
 
     CONSTRAINT FK_FactVentas_Cliente FOREIGN KEY (IdCliente)
-        REFERENCES DimCliente(IdCliente)
+        REFERENCES DimCliente(IdCliente),
+
+    CONSTRAINT FK_FactVentas_Canal FOREIGN KEY (IdCanal)
+        REFERENCES DimCanal(IdCanal)
 );
 GO
 
