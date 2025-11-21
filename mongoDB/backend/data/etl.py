@@ -44,20 +44,19 @@ class MongoToDW_ETL:
         if not codigo_mongo:
             return None
         
-
+        # agarramos y ponemos los números al revés
         if codigo_mongo.startswith('MN-'):
             numero = codigo_mongo[3:]  
-            # Generar letras basado en el número
-            # Usar hash del número para generar siempre las mismas letras para el mismo número
-            import hashlib
-            hash_object = hashlib.md5(numero.encode())
-            hash_hex = hash_object.hexdigest()
-            # Tomar los primeros 2 caracteres hexadecimales y convertirlos a letras A-P
-            char1 = chr(ord('A') + int(hash_hex[0], 16))  
-            char2 = chr(ord('A') + int(hash_hex[1], 16))  
-            return f'PRD-{numero}-{char1}{char2}'
+   
+            numero_invertido = numero[::-1] 
+            return f'SKU-{numero_invertido}'
         else:
-            return f'PRD-{codigo_mongo.replace("-", "")[:4].upper()}-XX'
+            
+            numero_limpio = ''.join(filter(str.isdigit, codigo_mongo))  
+            if numero_limpio:
+                numero_invertido = numero_limpio[::-1]
+                return f'SKU-{numero_invertido.zfill(4)}' 
+            return 'SKU-0000'
         
     def ultima_ejecucion(self):
         # esta es la parte que evita que metamos duplicados o así
@@ -299,6 +298,35 @@ class MongoToDW_ETL:
             print(f"Error obteniendo IdTiempo: {e}")
             return None
     
+    def obtener_canal(self, canal_nombre):
+        try:
+            cursor = self.sql_connection.cursor()
+            
+        
+            query = "SELECT IdCanal FROM DimCanal WHERE Nombre = ?"
+            cursor.execute(query, canal_nombre)
+            result = cursor.fetchone()
+            
+            if result:
+                return result[0]
+            
+            # si no existe, hay que crear uno nuevo
+            insert_query = """
+                INSERT INTO DimCanal (Nombre)
+                VALUES (?)
+            """
+            cursor.execute(insert_query, canal_nombre)
+            
+            cursor.execute("SELECT @@IDENTITY")
+            canal_id = cursor.fetchone()[0]
+            self.sql_connection.commit()
+            
+            return int(canal_id)
+            
+        except Exception as e:
+            print(f"Error procesando canal: {e}")
+            return None
+
     def procesar_ordenes(self, limit=None):
         try:
             
@@ -370,11 +398,13 @@ class MongoToDW_ETL:
                         '_id': {
                             'cliente_id': '$cliente_data._id',
                             'producto_id': '$producto_data._id',
-                            'fecha': '$fecha_solo'
+                            'fecha': '$fecha_solo',
+                            'canal': '$canal'
                         },
                         'cliente_data': {'$first': '$cliente_data'},
                         'producto_data': {'$first': '$producto_data'},
                         'fecha_original': {'$first': '$fecha'},
+                        'canal': {'$first': '$canal'},
                         'cantidad_total': {'$sum': '$items.cantidad'},
                         'precio_unit_promedio': {'$avg': '$items.precio_unit'},
                         'total_ventas_crc': {'$sum': '$total_item'}
@@ -403,6 +433,7 @@ class MongoToDW_ETL:
                     cantidad_total = venta['cantidad_total']
                     total_crc = venta['total_ventas_crc']
                     precio_unit_crc = venta['precio_unit_promedio'] 
+                    canal = venta['canal']
                     
                     
                     if not ultima_fecha_procesada or fecha.date() > ultima_fecha_procesada:
@@ -420,6 +451,12 @@ class MongoToDW_ETL:
                         error_count += 1
                         continue
                     
+                   
+                    canal_id = self.obtener_canal(canal)
+                    if not canal_id:
+                        error_count += 1
+                        continue
+                    
                
                     tiempo_id = self.get_tiempo_id(fecha)
                     if not tiempo_id:
@@ -434,14 +471,15 @@ class MongoToDW_ETL:
                     
                     cursor = self.sql_connection.cursor()
                     insert_query = """
-                        INSERT INTO FactVentas (IdTiempo, IdProducto, IdCliente, TotalVentas, Cantidad, Precio)
-                        VALUES (?, ?, ?, ?, ?, ?)
+                        INSERT INTO FactVentas (IdTiempo, IdProducto, IdCliente, IdCanal, TotalVentas, Cantidad, Precio)
+                        VALUES (?, ?, ?, ?, ?, ?, ?)
                     """
                     
                     cursor.execute(insert_query, (
                         tiempo_id,
                         producto_id,
                         cliente_id,
+                        canal_id,
                         round(total_usd, 2),
                         cantidad_total,
                         round(precio_unit_usd, 2)
@@ -506,4 +544,3 @@ class MongoToDW_ETL:
 if __name__ == "__main__":
     etl = MongoToDW_ETL()
     etl.run_etl()
-    

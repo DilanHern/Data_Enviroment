@@ -9,20 +9,23 @@ const Cliente = require('../src/models/cliente');
 const Producto = require('../src/models/producto');
 const Orden = require('../src/models/orden');
 
-// para generar sku del codigo mongo
+// para generar sku del codigo mongo, si no lo tenemos
 function generateSkuFromMongoCode(codigoMongo) {
   if (!codigoMongo) return null;
   
   if (codigoMongo.startsWith('MN-')) {
+    // es igual pero con el numero al reves
     const numero = codigoMongo.substring(3);
-    // Generar letras basado en el número
-    const hash = crypto.createHash('md5').update(numero).digest('hex');
-    // Tomar los primeros 2 caracteres hexadecimales y convertirlos a letras A-P
-    const char1 = String.fromCharCode('A'.charCodeAt(0) + parseInt(hash[0], 16));
-    const char2 = String.fromCharCode('A'.charCodeAt(0) + parseInt(hash[1], 16));
-    return `PRD-${numero}-${char1}${char2}`;
+    const numeroInvertido = numero.split('').reverse().join('');
+    return `SKU-${numeroInvertido}`;
   } else {
-    return `PRD-${codigoMongo.replace('-', '').substring(0, 4).toUpperCase()}-XX`;
+
+    const numeroLimpio = codigoMongo.replace(/\D/g, '');
+    if (numeroLimpio) {
+      const numeroInvertido = numeroLimpio.split('').reverse().join('');
+      return `SKU-${numeroInvertido.padStart(4, '0')}`;
+    }
+    return `SKU-0000`;
   }
 }
 
