@@ -129,20 +129,39 @@ def insert_orders(cursor, fake, n, client_ids):
 
 
 def insert_order_details(cursor, order_ids, product_ids, fake):
-    """Ensure every order in order_ids gets at least one OrdenDetalle.
-    Creates exactly one detail per order (so total details == len(order_ids)).
-    product_ids is a list of valid ProductoId values to choose from.
+    """
+    Inserta detalles de orden. Algunas órdenes tendrán múltiples productos.
+    - 60% de órdenes: 1 producto
+    - 25% de órdenes: 2-3 productos
+    - 15% de órdenes: 4-7 productos
     """
     rows = []
     for orden_id in order_ids:
-        producto_id = random.choice(product_ids)
-        cantidad = random.randint(1, 10)
-        precio = round(random.uniform(5, 500), 2)
-        # 30% chance of having a discount (1-30%) — never 100%
-        descuento = None
-        if random.random() < 0.3:
-            descuento = round(random.uniform(1, 30), 2)
-        rows.append((orden_id, producto_id, cantidad, precio, descuento))
+        # Determinar cuántos productos tendrá esta orden
+        rand = random.random()
+        if rand < 0.60:
+            num_productos = 1
+        elif rand < 0.85:
+            num_productos = random.randint(2, 3)
+        else:
+            num_productos = random.randint(4, 7)
+        
+        # Insertar los productos (sin repetir en la misma orden)
+        productos_usados = set()
+        for _ in range(num_productos):
+            # Seleccionar producto único para esta orden
+            producto_id = random.choice(product_ids)
+            while producto_id in productos_usados and len(productos_usados) < len(product_ids):
+                producto_id = random.choice(product_ids)
+            productos_usados.add(producto_id)
+            
+            cantidad = random.randint(1, 10)
+            precio = round(random.uniform(5, 500), 2)
+            # 30% chance of having a discount (1-30%)
+            descuento = None
+            if random.random() < 0.3:
+                descuento = round(random.uniform(1, 30), 2)
+            rows.append((orden_id, producto_id, cantidad, precio, descuento))
 
     sql = "INSERT INTO sales_ms.OrdenDetalle (OrdenId, ProductoId, Cantidad, PrecioUnit, DescuentoPct) VALUES (?, ?, ?, ?, ?)"
     for part in chunked(rows, 200):
@@ -215,8 +234,11 @@ def main():
         cursor.execute("SELECT OrdenId FROM sales_ms.Orden WHERE OrdenId > ? ORDER BY OrdenId", base_order)
         order_ids = [r[0] for r in cursor.fetchall()]
 
-        # Insertar detalles (uno por orden)
-        print(f'Insertando {len(order_ids)} detalles de orden (uno por orden insertada)...')
+        # Insertar detalles (múltiples productos por orden)
+        print(f'Insertando detalles de orden para {len(order_ids)} órdenes...')
+        print(f'  → 60% órdenes: 1 producto')
+        print(f'  → 25% órdenes: 2-3 productos')
+        print(f'  → 15% órdenes: 4-7 productos')
         insert_order_details(cursor, order_ids, product_ids, fake)
         conn.commit()
 
