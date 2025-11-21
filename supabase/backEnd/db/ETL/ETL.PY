@@ -12,9 +12,43 @@ import sys
 from decimal import Decimal
 import platform
 from collections import defaultdict
+import re
+import hashlib
+
+def generate_sku_from_name_category(nombre: str, categoria: str, existing_skus: List[str]) -> str:
+    base_raw = f"{(nombre or '').strip()}-{(categoria or '').strip()}"
+    if not base_raw.strip(" -"):
+        base_raw = "sin-sku"
+
+    existing_upper = {s.upper() for s in (existing_skus or []) if s}
+
+    h = int(hashlib.sha1(base_raw.encode("utf-8")).hexdigest(), 16)
+    digits = h % 10000  # 0000-9999
+    letter1 = chr(ord("A") + ((h >> 16) % 26))
+    letter2 = chr(ord("A") + ((h >> 21) % 26))
+
+    sku = f"PRD-{digits:04d}-{letter1}{letter2}"
+
+    attempts = 0
+    # primero iteramos cambiando la parte numérica para evitar colisiones
+    while sku in existing_upper and attempts < 10000:
+        digits = (digits + 1) % 10000
+        sku = f"PRD-{digits:04d}-{letter1}{letter2}"
+        attempts += 1
+
+    # si todavía colisiona, iteramos sobre combinaciones de dos letras
+    if sku in existing_upper:
+        extra = 0
+        max_extra = 26 * 26
+        while sku in existing_upper and extra < max_extra:
+            l1 = chr(ord("A") + (extra // 26))
+            l2 = chr(ord("A") + (extra % 26))
+            sku = f"PRD-{digits:04d}-{l1}{l2}"
+            extra += 1
+
+    return sku.upper()
 
 
-#Aca se carga el .env.local 
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 dotenv_path = os.path.join(BASE_DIR, ".env.local")
 if os.path.isfile(dotenv_path):
@@ -156,18 +190,32 @@ def traetablassql(engine, table):
     return rows
 
 def transformadoryloadsupaproductos(engine, supa, productostable, equivalencias):
-    product_skus = [fila["SKU"] for fila in productostable]
-    equiv_skus = [fila["SKU"] for fila in equivalencias]
+    # normalizar SKUs existentes a MAYÚSCULAS y filtrar nulos
+    product_skus = [fila["SKU"].upper() for fila in productostable if fila.get("SKU")]
+    equiv_skus = [fila["SKU"].upper() for fila in equivalencias if fila.get("SKU")]
+    global mapa_sku
     with engine.begin() as conn:
         for producto in supa:
-            id = producto["producto_id"]
-            sku = producto["sku"]
-            nombre = producto["nombre"]
-            categoria = producto["categoria"]
+            id = producto.get("producto_id")
+            sku_raw = producto.get("sku")
+            nombre = producto.get("nombre")
+            categoria = producto.get("categoria")
+
+            sku = sku_raw.upper() if sku_raw else None
+
+            # si SKU faltante o vacío, se genera uno basado en nombre+categoria
+            if not sku:
+                sku = generate_sku_from_name_category(nombre, categoria, product_skus + equiv_skus)
+
             if sku in product_skus:
-                continue #confiamos en que si ya se hizo un insert del producto ya existe su equivalencia
+                if id:
+                    mapa_sku[id] = sku
+                continue
             if sku in equiv_skus:
-                continue # continuo al sgt pues este ya se que existe entonces no hace falta insertarlo
+                if id:
+                    mapa_sku[id] = sku
+                continue
+
             conn.execute(
                 text("INSERT INTO dbo.DimProducto (SKU, Nombre, Categoria) VALUES (:sku, :nombre, :categoria)"),
                 {"sku": sku, "nombre": nombre, "categoria": categoria}
@@ -178,6 +226,8 @@ def transformadoryloadsupaproductos(engine, supa, productostable, equivalencias)
             )
             product_skus.append(sku)
             equiv_skus.append(sku)
+            if id:
+                mapa_sku[id] = sku
 
 def transformadoryloadsupaclientes(engine, supa, clientestable):
     emailexistente = [fila["Email"] for fila in clientestable]
@@ -269,7 +319,6 @@ def traer_ordenes_por_fecha_supa(url, headers, fecha_min, fecha_max):
         print(f"Error al consultar Supabase: {e}", file=sys.stderr)
         raise
 
-    crearlogetlventas(fecha_max)
     return rows
 
 def diccionario_ordenes_por_cliente_fecha(ordenesfecha):
@@ -282,40 +331,77 @@ def diccionario_ordenes_por_cliente_fecha(ordenesfecha):
 
     return ordenes_cliente_fecha
 
-def agrupar_con_detalles(ordenes_cliente_fecha, url, headers):
+def agrupar_con_detalles(ordenes_cliente_fecha, ordenes_list, url, headers, sqltablafecha):
     # 1. Traer TODOS los detalles de supabase en una sola llamada grande
-    detalles_tabla = traetablassupa(url, headers, "orden_detalle")  
+    detalles_tabla = traetablassupa(url, headers, "orden_detalle")
 
     # 2. Indexar por orden_id para buscar rápido
     index_detalles = defaultdict(list)
     for det in detalles_tabla:
         index_detalles[det["orden_id"]].append(det)
 
-    # 3. Diccionario final: cliente → fecha → producto → métricas
+    # 3. Map de ordenes por id para obtener moneda de cada orden
+    orden_map = {o["orden_id"]: o for o in (ordenes_list or [])}
+
+    # 4. Map de fecha -> tipo de cambio (usar Decimal)
+    fecha_tipo_map: dict = {}
+    for row in (sqltablafecha or []):
+        key = row.get("Fecha")
+        # convertir a string YYYY-MM-DD si es date/datetime
+        try:
+            fecha_key = key.isoformat()
+        except Exception:
+            fecha_key = str(key)
+        tipo = row.get("TipoCambio")
+        try:
+            fecha_tipo_map[fecha_key] = Decimal(str(tipo)) if tipo is not None else None
+        except Exception:
+            fecha_tipo_map[fecha_key] = None
+
+    # 5. Diccionario final: cliente → fecha → producto → métricas (en DÓLARES)
     resultado = defaultdict(
         lambda: defaultdict(
             lambda: defaultdict(
-                lambda: {"cantidad_total": 0, "monto_total": 0}
+                lambda: {"cantidad_total": 0, "monto_total": Decimal("0")}
             )
         )
     )
 
-    # 4. JUNTA EN CASO DE QUE HAYA UN CLIENTE CON MISMO PEDIDO DE PRODUCTO EN EL MISMO DIA VARIAS VECES
+    # 6. JUNTA EN CASO DE QUE HAYA UN CLIENTE CON MISMO PEDIDO DE PRODUCTO EN EL MISMO DIA VARIAS VECES
     for cliente, fechas in ordenes_cliente_fecha.items():
         for fecha, ordenes in fechas.items():
+            # obtener tipo de cambio para la fecha (clave en formato ISO YYYY-MM-DD)
+            tipo_cambio = fecha_tipo_map.get(fecha)
             for orden_id in ordenes:
-
-                # Obtener detalles de ese orden
                 detalles = index_detalles.get(orden_id, [])
+                orden = orden_map.get(orden_id, {})
+                moneda = (orden.get("moneda") or "USD").upper()
 
-                # Acumular por producto
                 for det in detalles:
                     producto = det["producto_id"]
-                    cantidad = det["cantidad"]
-                    precio = det["precio_unit"]
+                    cantidad = det.get("cantidad", 0)
+                    precio = det.get("precio_unit", 0)
 
-                    resultado[cliente][fecha][producto]["cantidad_total"] += cantidad
-                    resultado[cliente][fecha][producto]["monto_total"] += cantidad * precio
+                    # convertir a Decimal para cálculos
+                    cantidad_dec = Decimal(str(cantidad))
+                    precio_dec = Decimal(str(precio))
+                    monto = cantidad_dec * precio_dec  # monto en la moneda de la orden
+
+                    if moneda in ("CRC"):
+                        if tipo_cambio and tipo_cambio != 0:
+                            # monto en dólares = monto_en_colones / tipo_cambio (colones por dolar)
+                            monto_dolares = monto / tipo_cambio
+                        else:
+                            # si no hay tipo de cambio disponible, emitir advertencia y asumir no conversión
+                            print(f"Warning: TipoCambio no encontrado para fecha {fecha}, orden {orden_id}; se asume USD", file=sys.stderr)
+                            monto_dolares = monto
+                    else:
+                        # ya está en dólares
+                        monto_dolares = monto
+
+                    # agregar a los acumulados (monto_total en DECIMAL USD)
+                    resultado[cliente][fecha][producto]["cantidad_total"] += cantidad_dec
+                    resultado[cliente][fecha][producto]["monto_total"] += monto_dolares
 
     return resultado
 
@@ -338,7 +424,7 @@ def init_mapas(url: str | None = None, headers: dict | None = None):
     if not url or not headers:
         url, headers = get_supabase_client()
     mapa_emails = {c["cliente_id"]: c.get("email") for c in traetablassupa(url, headers, "cliente")}
-    mapa_sku = {p["producto_id"]: p.get("sku") for p in traetablassupa(url, headers, "producto")}
+    mapa_sku = {p["producto_id"]: (p.get("sku").upper() if p.get("sku") else None) for p in traetablassupa(url, headers, "producto")}
 
 def findClienteId(sqltablacliente, clienteobj):
     email = mapa_emails.get(clienteobj)
@@ -361,7 +447,7 @@ def findProductoId(sqltablaproducto, productobj):
 
 def transformadoryloadsupaVENTAS(engine, url, headers, ordenesfecha, sqltablafecha, sqltablacliente, sqltablaproducto):
     ordenes_cliente_fecha = diccionario_ordenes_por_cliente_fecha(ordenesfecha)
-    ordenes_cliente_fecha_producto_metricas = agrupar_con_detalles(ordenes_cliente_fecha, url, headers)
+    ordenes_cliente_fecha_producto_metricas = agrupar_con_detalles(ordenes_cliente_fecha,ordenesfecha,url,headers,sqltablafecha)
     with engine.begin() as conn:
         for cliente, fechas in ordenes_cliente_fecha_producto_metricas.items():
             idcliente = findClienteId( sqltablacliente, cliente)
@@ -437,7 +523,7 @@ def run_etl():
     contenidoclientessql = traetablassql(enginesql, "dbo.DimCliente")
     factVentas = traetablassql(enginesql, "dbo.FactVentas")
     tablafecha = traetablassql(enginesql, "dbo.DimTiempo")
-    
+
     init_mapas(url, headers)
 
     #crea productos y sus equivalencias o en su defecto revisa equivalencias en dw
@@ -456,12 +542,17 @@ def run_etl():
 
     ordenesdetalle = traer_ordenes_por_fecha_supa(url,headers,fecha_min,fecha_max)
     #para crear las ventas hechas a un cliente de un producto en un dia
-    transformadoryloadsupaVENTAS(enginesql, url, headers, ordenesdetalle, tablafecha, contenidoclientessql, contenidosproductossql)
-    #print(contenidosproductossql)
+    try:
+        transformadoryloadsupaVENTAS(enginesql, url, headers, ordenesdetalle, tablafecha, contenidoclientessql, contenidosproductossql)
+    except Exception as e:
+        print(f"Error procesando ventas — log no actualizado: {e}", file=sys.stderr)
+        raise
+    else:
+        #solo actualiza el log si todo el procesamiento termina sin errores
+        crearlogetlventas(fecha_max)
 
     print("ETL COMPLETADO CON EXITO")
 
 
 if __name__ == "__main__":
     run_etl()
-

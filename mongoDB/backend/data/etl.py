@@ -165,7 +165,7 @@ class MongoToDW_ETL:
             cliente_id = cursor.fetchone()[0]
             self.sql_connection.commit()
             
-            print(f"Cliente creado: {cliente_data['email']} - ID: {cliente_id}")
+           
             return int(cliente_id)
             
         except Exception as e:
@@ -200,7 +200,7 @@ class MongoToDW_ETL:
             # si sí, buscamos el product por su sku
             if equivalencia_id and sku_existente:
                 sku_final = sku_existente
-                print(f"Encontrada equivalencia existente para {codigo_mongo} - SKU: {sku_final}")
+                
                 
                 
                 query = "SELECT IdProducto FROM DimProducto WHERE SKU = ?"
@@ -208,7 +208,6 @@ class MongoToDW_ETL:
                 result = cursor.fetchone()
                 if result:
                     producto_id = result[0]
-                    print(f"Encontrado producto existente - ID: {producto_id}")
                     return int(producto_id)
             
             
@@ -224,7 +223,7 @@ class MongoToDW_ETL:
                     result = cursor.fetchone()
                     if result:
                         equivalencia_id = result[0]
-                        print(f"Encontrada equivalencia por SKU: {sku_final}")
+                        
                 
                 # sino por código alternativo
                 if not equivalencia_id and codigo_alt:
@@ -233,7 +232,7 @@ class MongoToDW_ETL:
                     result = cursor.fetchone()
                     if result:
                         equivalencia_id = result[0]
-                        print(f"Encontrada equivalencia por código alt: {codigo_alt}")
+                        
                 
                 # si no hay, hacemos una nueva equivalencia
                 if not equivalencia_id:
@@ -244,7 +243,7 @@ class MongoToDW_ETL:
                     cursor.execute(insert_query, (sku_final, codigo_mongo, codigo_alt))
                     cursor.execute("SELECT @@IDENTITY")
                     equivalencia_id = cursor.fetchone()[0]
-                    print(f"Nueva equivalencia creada - ID: {equivalencia_id}, SKU: {sku_final}")
+                    
             else:
                 sku_final = sku_existente
             
@@ -265,7 +264,7 @@ class MongoToDW_ETL:
                 cursor.execute(insert_query, (sku_final, nombre, categoria))
                 cursor.execute("SELECT @@IDENTITY")
                 producto_id = cursor.fetchone()[0]
-                print(f"Producto creado: {nombre} - ID: {producto_id}, SKU: {sku_final}")
+                
             
             self.sql_connection.commit()
             return int(producto_id)
@@ -294,7 +293,6 @@ class MongoToDW_ETL:
             if result:
                 return result[0]
             else:
-                print(f"No se encontró IdTiempo para fecha {fecha.date()}")
                 return None
                 
         except Exception as e:
@@ -350,7 +348,7 @@ class MongoToDW_ETL:
                 pipeline.insert(0, date_filter)  
                 print(f"Analizando órdenes posteriores al: {next_day}")
             else:
-                print("Primera ejecución - procesando todas las órdenes")
+                print("Primera ejecución")
             
            
             pipeline.extend([
@@ -392,7 +390,7 @@ class MongoToDW_ETL:
             if not ventas_agregadas:
                 return 0, None
             
-            print(f"Procesando {len(ventas_agregadas)} ventas agregadas por cliente/producto/día")
+           
             
             processed_count = 0
             error_count = 0
@@ -453,7 +451,7 @@ class MongoToDW_ETL:
                     
                     if processed_count % 50 == 0:
                         self.sql_connection.commit()
-                        print(f"Procesados {processed_count} registros agregados...")
+                        
                 
                 except Exception as e:
                     print(f"Error procesando venta agregada: {e}")
@@ -463,7 +461,7 @@ class MongoToDW_ETL:
            
             self.sql_connection.commit()
             
-            print(f"ETL completado: {processed_count} registros agregados procesados exitosamente")
+            
             print(f"Errores: {error_count}")
             
             return processed_count, ultima_fecha_procesada

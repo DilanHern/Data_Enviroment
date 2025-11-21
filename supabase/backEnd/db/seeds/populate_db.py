@@ -3,11 +3,12 @@
 
 import os
 import random
+import string
 from decimal import Decimal
 from datetime import datetime
 import sys
 from typing import List, Dict, Any
-
+import json
 from dotenv import load_dotenv
 import requests
 from faker import Faker
@@ -26,7 +27,6 @@ else:
 def chunked(iterable, size):
     for i in range(0, len(iterable), size):
         yield iterable[i:i+size]
-
 
 def get_supabase_client():
     # Debug opcional: mostrar qué ve el script (enmascarando la key)
@@ -62,6 +62,7 @@ def get_supabase_client():
 def insert_clients(session, base_url, headers, fake, n) -> List[str]:
     rows = []
     genders = ["M", "F"]  # según constraint en creationScript.sql
+
     for _ in range(n):
         nombre = fake.name()
         email = fake.unique.email()
@@ -96,88 +97,103 @@ def insert_clients(session, base_url, headers, fake, n) -> List[str]:
     return client_ids
 
 
-def insert_products(session, base_url, headers, fake, n) -> List[str]:
-    categories = [
-        "Electrónica",
-        "Ropa",
-        "Hogar",
-        "Juguetes",
-        "Belleza",
-        "Deportes",
-        "Alimentos",
-        "Accesorios",
-    ]
-
-    product_types = [
-        "Auriculares",
-        "Teléfono",
-        "Portátil",
-        "Cámara",
-        "Monitor",
-        "Camiseta",
-        "Pantalones",
-        "Chaqueta",
-        "Zapatillas",
-        "Vestido",
-        "Sofá",
-        "Mesa",
-        "Silla",
-        "Lámpara",
-        "Alfombra",
-        "Muñeco",
-        "Puzzle",
-        "Juego de mesa",
-        "Pelota",
-        "Lego",
-        "Crema",
-        "Perfume",
-        "Champú",
-        "Maquillaje",
-        "Loción",
-        "Raqueta",
-        "Bicicleta",
-        "Pesas",
-        "Balón",
-        "Mochila deportiva",
-        "Galletas",
-        "Cereal",
-        "Chocolate",
-        "Snack",
-        "Café",
-        "Reloj",
-        "Gafas",
-        "Bolso",
-        "Cinturón",
-        "Cartera",
-    ]
-
-    adjectives = [
-        "Premium",
-        "Clásico",
-        "Moderno",
-        "Compacto",
-        "Ergonómico",
-        "Ligero",
-        "De lujo",
-        "Económico",
-        "Profesional",
-        "Portátil",
-    ]
-
+def insert_products(session, base_url, headers, fake, n, common_rows=None) -> List[str]:
+    # If `common_rows` (from DatosComunes.json) is provided, use those rows
+    # (mapping tolerant to key name variations). Otherwise generate products.
     rows = []
-    for _ in range(n):
-        sku = fake.unique.lexify(text="SKU??????").upper()
-        tipo = random.choice(product_types)
-        adjetivo = random.choice(adjectives)
-        nombre = f"{tipo} {adjetivo}"
-        categoria = random.choice(categories)
-        rows.append(
-            {
-                "sku": sku,
-                "nombre": nombre,
-                "categoria": categoria,
-            }
-        )
+    # If common rows provided, insert ALL of them first (they are additional)
+    if common_rows:
+        for r in common_rows:
+            rows.append(
+                {
+                    "sku": r.get("SKU") or r.get("sku"),
+                    "nombre": r.get("Nombre") or r.get("nombre"),
+                    "categoria": r.get("Categoria") or r.get("categoria"),
+                }
+            )
+
+    # Always generate `n` additional products (so total = len(common_rows) + n)
+    if n > 0:
+        categories = [
+            "Electrónica",
+            "Ropa",
+            "Hogar",
+            "Juguetes",
+            "Belleza",
+            "Deportes",
+            "Alimentos",
+            "Accesorios",
+        ]
+
+        product_types = [
+            "Auriculares",
+            "Teléfono",
+            "Portátil",
+            "Cámara",
+            "Monitor",
+            "Camiseta",
+            "Pantalones",
+            "Chaqueta",
+            "Zapatillas",
+            "Vestido",
+            "Sofá",
+            "Mesa",
+            "Silla",
+            "Lámpara",
+            "Alfombra",
+            "Muñeco",
+            "Puzzle",
+            "Juego de mesa",
+            "Pelota",
+            "Lego",
+            "Crema",
+            "Perfume",
+            "Champú",
+            "Maquillaje",
+            "Loción",
+            "Raqueta",
+            "Bicicleta",
+            "Pesas",
+            "Balón",
+            "Mochila deportiva",
+            "Galletas",
+            "Cereal",
+            "Chocolate",
+            "Snack",
+            "Café",
+            "Reloj",
+            "Gafas",
+            "Bolso",
+            "Cinturón",
+            "Cartera",
+        ]
+
+        adjectives = [
+            "Premium",
+            "Clásico",
+            "Moderno",
+            "Compacto",
+            "Ergonómico",
+            "Ligero",
+            "De lujo",
+            "Económico",
+            "Profesional",
+            "Portátil",
+        ]
+
+        for _ in range(n):
+            sku = f"PRD-{random.randint(1000,9999)}-{''.join(random.choices(string.ascii_uppercase, k=2))}"
+            tipo = random.choice(product_types)
+            adjetivo = random.choice(adjectives)
+            nombre = f"{tipo} {adjetivo}"
+            categoria = random.choice(categories)
+            rows.append(
+                {
+                    "sku": sku,
+                    "nombre": nombre,
+                    "categoria": categoria,
+                }
+            )
 
     product_ids: List[str] = []
     for part in chunked(rows, 200):
@@ -193,6 +209,39 @@ def insert_products(session, base_url, headers, fake, n) -> List[str]:
         product_ids.extend(row["producto_id"] for row in data)
 
     return product_ids
+
+
+def load_common_products(paths):
+    """
+    Buscar y cargar `equivalencias.json` (o un JSON con formato similar)
+    desde una lista de rutas candidatas.
+    Devuelve lista de filas (cada fila es dict con claves como en JSON) o None.
+    """
+    for p in paths:
+        if os.path.isfile(p):
+            try:
+                with open(p, "r", encoding="utf-8") as fh:
+                    data = json.load(fh)
+                # Soporte para dos formatos comunes:
+                # - El formato antiguo `DatosComunes.json` con una clave "rows": { "rows": [ ... ] }
+                # - El formato de `equivalencias.json` que es una lista top-level: [ {...}, ... ]
+                if isinstance(data, dict) and "rows" in data:
+                    return data.get("rows", []), p
+                if isinstance(data, list):
+                    return data, p
+                # Otros formatos: intentar devolver una lista si tiene elementos candidatos
+                # Buscar claves comunes por si acaso
+                if isinstance(data, dict):
+                    # intentar devolver cualquier valor que sea lista
+                    for v in data.values():
+                        if isinstance(v, list):
+                            return v, p
+                # Si no se reconoce el formato, fallará al siguiente candidato
+            except Exception as e:
+                print(f"Error leyendo {p}: {e}", file=sys.stderr)
+    return None, None
+
+
 
 
 def insert_orders(session, base_url, headers, fake, n, client_ids) -> List[str]:
@@ -256,34 +305,67 @@ def insert_order_details(session, base_url, headers, order_ids, product_ids, fak
 
 
 def update_order_totals(session, base_url, headers):
-    resp = session.get(
-        f"{base_url}/rest/v1/orden_detalle",
-        headers={**headers, "Prefer": "return=representation"},
-        params={"select": "orden_id,cantidad,precio_unit"},
-    )
+    try:
+        resp = session.get(
+            f"{base_url}/rest/v1/orden_detalle",
+            headers={**headers, "Prefer": "return=representation"},
+            params={"select": "orden_id,cantidad,precio_unit"},
+            timeout=30,
+        )
+    except requests.exceptions.RequestException as e:
+        print("Error de red al leer orden_detalle:", e, file=sys.stderr)
+        return
+
     if not resp.ok:
         print("Error leyendo orden_detalle para actualizar totales:", resp.status_code, resp.text, file=sys.stderr)
-        sys.exit(1)
+        return
 
     detalles: List[Dict[str, Any]] = resp.json()
+    if not detalles:
+        print("No hay detalles de orden para procesar.")
+        return
+
     totals: Dict[str, float] = {}
     for d in detalles:
-        oid = d["orden_id"]
-        cantidad = d["cantidad"]
-        precio = float(d["precio_unit"])
+        oid = d.get("orden_id")
+        cantidad = d.get("cantidad", 0)
+        precio = float(d.get("precio_unit", 0))
         subtotal = cantidad * precio
         totals[oid] = totals.get(oid, 0.0) + subtotal
 
-    for orden_id, total in totals.items():
-        resp = session.patch(
-            f"{base_url}/rest/v1/orden",
-            headers=headers,
-            params={"orden_id": f"eq.{orden_id}"},
-            json={"total": round(total, 2)},
-        )
-        if not resp.ok:
-            print(f"Error actualizando total para orden_id={orden_id}:", resp.status_code, resp.text, file=sys.stderr)
-            sys.exit(1)
+
+    order_items = list(totals.items())
+    total_orders = len(order_items)
+    print(f"Actualizando totales para {total_orders} órdenes...")
+
+    for idx, (orden_id, total) in enumerate(order_items, start=1):
+        payload = {"total": round(total, 2)}
+        success = False
+        for attempt in range(3):
+            try:
+                resp = session.patch(
+                    f"{base_url}/rest/v1/orden",
+                    headers=headers,
+                    params={"orden_id": f"eq.{orden_id}"},
+                    json=payload,
+                    timeout=15,
+                )
+            except requests.exceptions.RequestException as e:
+                print(f"Intento {attempt+1}: error de red actualizando orden {orden_id}: {e}", file=sys.stderr)
+                continue
+
+            if resp.ok:
+                success = True
+                break
+            else:
+                # transient server errors -> retry
+                print(f"Intento {attempt+1}: fallo actualizando orden {orden_id}: {resp.status_code}", file=sys.stderr)
+
+        if not success:
+            print(f"No se pudo actualizar total para orden_id={orden_id} después de reintentos.", file=sys.stderr)
+
+        if idx % 100 == 0 or idx == total_orders:
+            print(f"Progreso: {idx}/{total_orders} órdenes actualizadas")
 
 
 def main():
@@ -296,11 +378,24 @@ def main():
 
     session = requests.Session()
 
+    candidates = [
+        # posibles ubicaciones relativas para `equivalencias.json` desde `backEnd` (BASE_DIR)
+        os.path.join(BASE_DIR, "..", "equivalencias.json"),
+        os.path.join(BASE_DIR, "..", "..", "equivalencias.json"),
+        os.path.join(BASE_DIR, "equivalencias.json"),
+        os.path.join(os.getcwd(), "equivalencias.json"),
+    ]
+    common_rows, common_path = load_common_products(candidates)
+
+    if common_rows:
+        print(f"Insertando {len(common_rows)} productos comunes + {rows} generados productos totales via REST...")
+    else:
+        print(f"Insertando {rows} productos generados via REST...")
+
+    product_ids = insert_products(session, base_url, headers, fake, rows, common_rows)
+
     print(f"Insertando {rows} clientes via REST...")
     client_ids = insert_clients(session, base_url, headers, fake, rows)
-
-    print(f"Insertando {rows} productos via REST...")
-    product_ids = insert_products(session, base_url, headers, fake, rows)
 
     print(f"Insertando {rows} órdenes via REST...")
     order_ids = insert_orders(session, base_url, headers, fake, rows, client_ids)

@@ -36,7 +36,10 @@ function App() {
       <div className="App">
         <header className="header">
           <div className="container">
-            <h1>CR E-commerce Admin (Supabase)</h1>
+            <div className="app-title">
+              <h1>SUPABASE</h1>
+              <div className="subtitle">CR E-commerce</div>
+            </div>
             <Navigation />
           </div>
         </header>

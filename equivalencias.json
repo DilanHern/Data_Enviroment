@@ -833,9 +833,9 @@
   },
   {
     "Id": 105,
-    "SKU": "SKU-9790",
-    "CodigoMongo": "MN-9789",
-    "CodigoAlt": "ALT-ZR98",
+    "SKU": "SKU-9222",
+    "CodigoMongo": "MN-9711",
+    "CodigoAlt": "ALT-ZR11",
     "nombre": "Energizante",
     "categoria": "bebidas"
   },
@@ -1139,7 +1139,7 @@
     "Id": 143,
     "SKU": "SKU-6324",
     "CodigoMongo": "MN-8480",
-    "CodigoAlt": "ALT-OF97",
+    "CodigoAlt": "ALT-O297",
     "nombre": "Toallas Húmedas",
     "categoria": "higiene"
   },
@@ -1233,9 +1233,9 @@
   },
   {
     "Id": 155,
-    "SKU": "SKU-5816",
-    "CodigoMongo": "MN-8294",
-    "CodigoAlt": "ALT-PB97",
+    "SKU": "SKU-9999",
+    "CodigoMongo": "MN-9999",
+    "CodigoAlt": "ALT-9999",
     "nombre": "Azúcar",
     "categoria": "alimentos"
   },
