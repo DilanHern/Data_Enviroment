@@ -1,6 +1,7 @@
 import argparse
 import os
 import random
+import json
 from decimal import Decimal
 from datetime import datetime, timedelta
 
@@ -37,16 +38,71 @@ def insert_clients(cursor, fake, n):
         cursor.executemany(sql, part)
 
 
-def insert_products(cursor, fake, n):
+def insert_products(cursor, fake, n, json_path=None):
+    """
+    Inserta productos. Si json_path es proporcionado, primero inserta los SKUs del JSON,
+    luego completa hasta n productos con datos generados por Faker.
+    """
     categories = [
         'Electrónica', 'Ropa', 'Hogar', 'Juguetes', 'Belleza', 'Deportes', 'Alimentos', 'Accesorios'
     ]
     rows = []
-    for _ in range(n):
-        sku = fake.unique.lexify(text='SKU??????').upper()
-        nombre = fake.sentence(nb_words=3).rstrip('.')
-        categoria = random.choice(categories)
-        rows.append((sku, nombre, categoria))
+    seen_skus = set()  # Para evitar duplicados
+    
+    # Si hay JSON, cargar SKUs de ahí primero
+    json_count = 0
+    duplicates_skipped = 0
+    if json_path and os.path.exists(json_path):
+        try:
+            with open(json_path, 'r', encoding='utf-8') as f:
+                equivalencias = json.load(f)
+            
+            # Insertar productos del JSON (solo usar SKU)
+            for item in equivalencias:
+                sku = item['SKU']
+                
+                # Saltar duplicados
+                if sku in seen_skus:
+                    duplicates_skipped += 1
+                    continue
+                
+                seen_skus.add(sku)
+                nombre = item.get('nombre', fake.sentence(nb_words=3).rstrip('.'))
+                categoria = item.get('categoria', random.choice(categories))
+                # Mapear categorías en español si vienen en minúsculas
+                categoria_map = {
+                    'electronicos': 'Electrónica',
+                    'bebidas': 'Alimentos',
+                    'alimentos': 'Alimentos',
+                    'higiene': 'Belleza',
+                    'limpieza': 'Hogar'
+                }
+                categoria = categoria_map.get(categoria.lower(), categoria.capitalize())
+                
+                rows.append((sku, nombre, categoria))
+                json_count += 1
+            
+            print(f'  → Cargados {json_count} productos desde {json_path}')
+            if duplicates_skipped > 0:
+                print(f'  ⚠️  Omitidos {duplicates_skipped} SKUs duplicados del JSON')
+        except Exception as e:
+            print(f'  ⚠️  Error cargando JSON: {e}. Generando todos los productos con Faker.')
+    
+    # Completar con Faker hasta alcanzar n productos
+    remaining = n - json_count
+    if remaining > 0:
+        print(f'  → Generando {remaining} productos adicionales con Faker...')
+        for _ in range(remaining):
+            # Generar SKU único
+            while True:
+                sku = fake.unique.lexify(text='SKU??????').upper()
+                if sku not in seen_skus:
+                    seen_skus.add(sku)
+                    break
+            
+            nombre = fake.sentence(nb_words=3).rstrip('.')
+            categoria = random.choice(categories)
+            rows.append((sku, nombre, categoria))
 
     sql = "INSERT INTO sales_ms.Producto (SKU, Nombre, Categoria) VALUES (?, ?, ?)"
     for part in chunked(rows, 200):
@@ -118,6 +174,7 @@ def main():
     parser.add_argument('--clientes', type=int, default=600, help='Número de clientes (default 600)')
     parser.add_argument('--productos', type=int, default=420, help='Número de productos (default 420)')
     parser.add_argument('--ordenes', type=int, default=5000, help='Número de órdenes (default 5000)')
+    parser.add_argument('--json-equivalencias', default='../equivalencias.json', help='Ruta al JSON de equivalencias (default: ../equivalencias.json)')
 
     args = parser.parse_args()
 
@@ -144,7 +201,7 @@ def main():
         print(f'Insertando {args.productos} productos...')
         cursor.execute("SELECT ISNULL(MAX(ProductoId), 0) FROM sales_ms.Producto")
         base_product = cursor.fetchone()[0]
-        insert_products(cursor, fake, args.productos)
+        insert_products(cursor, fake, args.productos, args.json_equivalencias)
         conn.commit()
         cursor.execute("SELECT ProductoId FROM sales_ms.Producto WHERE ProductoId > ? ORDER BY ProductoId", base_product)
         product_ids = [r[0] for r in cursor.fetchall()]

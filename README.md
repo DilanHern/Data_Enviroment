@@ -65,6 +65,23 @@ python etl.py
 
 ## Neo4J
 
-## SQL server
+## SQL Server
+Para poblar la base de datos con datos de prueba, primero instalar las dependencias:
+```bash
+cd "sql server"
+pip install -r requirements.txt
+```
+
+Para llenar la base de datos (genera 600 clientes, 420 productos, 5000 órdenes):
+```bash
+python populate_db.py --server localhost --database ventas_ms --trusted
+# O con autenticación SQL Server:
+python populate_db.py --server localhost --database ventas_ms --username tu_usuario --password tu_password
+```
+
+Para ejecutar el ETL desde SQL Server al Data Warehouse, configurar primero el archivo `env.txt` con las credenciales y luego:
+```bash
+python ETL_SQLSERVER_TO_DW.py
+```
 
 ## Supabase
