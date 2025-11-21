@@ -36,3 +36,53 @@ CREATE TABLE orden_detalle (
 
 CREATE INDEX ix_orden_fecha ON orden(fecha);
 CREATE INDEX ix_detalle_producto ON orden_detalle(producto_id);
+
+
+
+-- ===================================== ACA EMPIEZA LAS TABLAS DE APRIORI
+-- ===========================================
+-- 1. ITEMSET (conjuntos frecuentes)
+-- ===========================================
+create table itemset (
+  itemset_id uuid primary key default gen_random_uuid(),
+  soporte numeric not null,
+  tamano int not null
+);
+
+-- ===========================================
+-- 2. ITEMSET_ITEM (productos que lo componen)
+-- ===========================================
+create table itemset_item (
+  itemset_id uuid references itemset(itemset_id) on delete cascade,
+  producto_id uuid references producto(producto_id) on delete cascade,
+  primary key (itemset_id, producto_id)
+);
+
+-- ===========================================
+-- 3. ASSOCIATION_RULE (regla completa)
+-- ===========================================
+create table association_rule (
+  rule_id uuid primary key default gen_random_uuid(),
+  itemset_id uuid references itemset(itemset_id) on delete cascade,
+  soporte numeric,
+  confianza numeric,
+  lift numeric
+);
+
+-- ===========================================
+-- 4. RULE_ANTECEDENTE (lado izquierdo)
+-- ===========================================
+create table rule_antecedente (
+  rule_id uuid references association_rule(rule_id) on delete cascade,
+  producto_id uuid references producto(producto_id) on delete cascade,
+  primary key (rule_id, producto_id)
+);
+
+-- ===========================================
+-- 5. RULE_CONSECUENTE (lado derecho)
+-- ===========================================
+create table rule_consecuente (
+  rule_id uuid references association_rule(rule_id) on delete cascade,
+  producto_id uuid references producto(producto_id) on delete cascade,
+  primary key (rule_id, producto_id)
+);

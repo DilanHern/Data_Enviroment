@@ -244,58 +244,137 @@ def load_common_products(paths):
 
 
 
-def insert_orders(session, base_url, headers, fake, n, client_ids) -> List[str]:
-    canales = ["WEB", "APP", "PARTNER"]  # según CHECK en creationScript.sql
-    rows = []
+def insert_orders(session, base_url, headers, fake, n, client_ids, product_ids, correlated_patterns=None, corr_prob=0.0) -> List[str]:
+    canales = ["WEB", "APP", "PARTNER"]
+    moneda = ["USD", "CRC"]
+
+    # Pre-generar payloads y items por orden (items temporales, sin orden_id aún)
+    orders_payload = []
+    items_per_order = []
+    max_items_per_order = 35
+    available = len(product_ids)
+
     for _ in range(n):
         cliente_id = random.choice(client_ids)
         fecha = fake.date_time_between(start_date="-2y", end_date="now")
         canal = random.choice(canales)
-        total = Decimal("0.00")
-        rows.append(
-            {
-                "cliente_id": cliente_id,
-                "fecha": fecha.isoformat(),
-                "canal": canal,
-                "moneda": "USD",
-                "total": float(total),
-            }
-        )
+        moneda_seleccionada = random.choice(moneda)
 
+        # generar items para esta orden
+        k = random.randint(1, min(max_items_per_order, available))
+        productos_seleccionados = random.sample(product_ids, k)
+
+        # Inyectar patrón correlacionado con cierta probabilidad
+        # `correlated_patterns` es una lista de (antecedents_list, consequent)
+        if correlated_patterns and random.random() < corr_prob:
+            ants, cons = random.choice(correlated_patterns)
+            # asegurar que todos los antecedentes y el consecuente estén en la orden
+            ants = list(ants)
+            # construir nueva selección que garantice la presencia de ants + cons
+            remaining = [p for p in product_ids if p not in set(ants) and p != cons]
+            random.shuffle(remaining)
+            new_sel = list(ants) + [cons]
+            # rellenar hasta k elementos si hace falta
+            for p in remaining:
+                if len(new_sel) >= k:
+                    break
+                new_sel.append(p)
+            # si k es menor que len(new_sel) (poco probable), truncamos pero conservando la pattern
+            productos_seleccionados = new_sel[:max(k, len(ants) + 1)]
+        detalles = []
+        total = 0.0
+        for producto_id in productos_seleccionados:
+            cantidad = random.randint(1, 15)
+            precio = round(random.uniform(155, 1900), 2)
+            subtotal = cantidad * precio
+            total += subtotal
+            detalles.append({
+                "producto_id": producto_id,
+                "cantidad": cantidad,
+                "precio_unit": precio,
+            })
+
+        orders_payload.append({
+            "cliente_id": cliente_id,
+            "fecha": fecha.isoformat(),
+            "canal": canal,
+            "moneda": moneda_seleccionada,
+            "total": round(total, 2),
+        })
+        items_per_order.append(detalles)
+
+    # Insertar órdenes por chunks y recoger orden_ids
     order_ids: List[str] = []
-    for part in chunked(rows, 200):
-        resp = session.post(
-            f"{base_url}/rest/v1/orden",  # tabla: public.orden
-            json=part,
-            headers=headers,
-        )
+    all_details_rows = []
+    idx = 0
+    for part_orders in chunked(orders_payload, 200):
+        try:
+            resp = session.post(f"{base_url}/rest/v1/orden", json=part_orders, headers=headers)
+        except requests.exceptions.RequestException as e:
+            print("Error de red insertando órdenes:", e, file=sys.stderr)
+            sys.exit(1)
+
         if not resp.ok:
             print("Error insertando órdenes:", resp.status_code, resp.text, file=sys.stderr)
             sys.exit(1)
-        data = resp.json()
-        order_ids.extend(row["orden_id"] for row in data)
+
+        created = resp.json()
+        # crear mapping por posición: se asume que PostgREST devuelve filas en el mismo orden
+        for j, row in enumerate(created):
+            orden_id = row.get("orden_id")
+            order_ids.append(orden_id)
+            # items correspondientes para esta orden
+            detalles = items_per_order[idx]
+            for d in detalles:
+                all_details_rows.append({
+                    "orden_id": orden_id,
+                    "producto_id": d["producto_id"],
+                    "cantidad": d["cantidad"],
+                    "precio_unit": d["precio_unit"],
+                })
+            idx += 1
+
+    # Insertar todos los detalles en chunks
+    for part in chunked(all_details_rows, 200):
+        try:
+            resp = session.post(f"{base_url}/rest/v1/orden_detalle", json=part, headers=headers)
+        except requests.exceptions.RequestException as e:
+            print("Error de red insertando detalles de orden:", e, file=sys.stderr)
+            sys.exit(1)
+
+        if not resp.ok:
+            print("Error insertando detalles de orden:", resp.status_code, resp.text, file=sys.stderr)
+            sys.exit(1)
 
     return order_ids
 
 
 def insert_order_details(session, base_url, headers, order_ids, product_ids, fake):
     rows = []
+    # Cada orden contendrá entre 1 y 20 productos distintos (si hay menos productos, tomar el máximo disponible)
+    max_items_per_order = 35
+    available = len(product_ids)
     for orden_id in order_ids:
-        producto_id = random.choice(product_ids)
-        cantidad = random.randint(1, 10)
-        precio = round(random.uniform(5, 500), 2)
-        rows.append(
-            {
-                "orden_id": orden_id,
-                "producto_id": producto_id,
-                "cantidad": cantidad,
-                "precio_unit": precio,
-            }
-        )
+        # número de ítems distintos para esta orden
+        k = random.randint(1, min(max_items_per_order, available))
+        # seleccionar productos únicos por orden
+        productos_seleccionados = random.sample(product_ids, k)
+        for producto_id in productos_seleccionados:
+            cantidad = random.randint(1, 15)
+            precio = round(random.uniform(155, 1900), 2)
+            rows.append(
+                {
+                    "orden_id": orden_id,
+                    "producto_id": producto_id,
+                    "cantidad": cantidad,
+                    "precio_unit": precio,
+                }
+            )
 
+    # Insertar en lotes (chunked) para no saturar la API
     for part in chunked(rows, 200):
         resp = session.post(
-            f"{base_url}/rest/v1/orden_detalle",  # tabla: public.ordendetalle
+            f"{base_url}/rest/v1/orden_detalle",  # tabla: public.orden_detalle
             json=part,
             headers=headers,
         )
@@ -325,22 +404,32 @@ def update_order_totals(session, base_url, headers):
         print("No hay detalles de orden para procesar.")
         return
 
+    # resumen compacto: cuántos detalles se recuperaron (muestra suprimida)
+    print(f"Detalles recuperados: {len(detalles)} (muestra suprimida)")
+
     totals: Dict[str, float] = {}
     for d in detalles:
         oid = d.get("orden_id")
-        cantidad = d.get("cantidad", 0)
-        precio = float(d.get("precio_unit", 0))
+        try:
+            cantidad = float(d.get("cantidad", 0))
+        except Exception:
+            cantidad = 0.0
+        try:
+            precio = float(d.get("precio_unit", 0))
+        except Exception:
+            precio = 0.0
         subtotal = cantidad * precio
         totals[oid] = totals.get(oid, 0.0) + subtotal
-
 
     order_items = list(totals.items())
     total_orders = len(order_items)
     print(f"Actualizando totales para {total_orders} órdenes...")
 
+    success_count = 0
     for idx, (orden_id, total) in enumerate(order_items, start=1):
         payload = {"total": round(total, 2)}
         success = False
+        last_resp = None
         for attempt in range(3):
             try:
                 resp = session.patch(
@@ -354,18 +443,22 @@ def update_order_totals(session, base_url, headers):
                 print(f"Intento {attempt+1}: error de red actualizando orden {orden_id}: {e}", file=sys.stderr)
                 continue
 
+            last_resp = resp
             if resp.ok:
                 success = True
+                success_count += 1
                 break
             else:
                 # transient server errors -> retry
-                print(f"Intento {attempt+1}: fallo actualizando orden {orden_id}: {resp.status_code}", file=sys.stderr)
+                print(f"Intento {attempt+1}: fallo actualizando orden {orden_id}: {resp.status_code} - {resp.text}", file=sys.stderr)
 
         if not success:
-            print(f"No se pudo actualizar total para orden_id={orden_id} después de reintentos.", file=sys.stderr)
+            print(f"No se pudo actualizar total para orden_id={orden_id} después de reintentos. Última respuesta: {getattr(last_resp, 'status_code', None)} {getattr(last_resp, 'text', '')}", file=sys.stderr)
 
         if idx % 100 == 0 or idx == total_orders:
-            print(f"Progreso: {idx}/{total_orders} órdenes actualizadas")
+            print(f"Progreso: {idx}/{total_orders} órdenes actualizadas (éxitos: {success_count})")
+
+    print(f"Actualización de totales finalizada. Éxitos: {success_count}/{total_orders}")
 
 
 def main():
@@ -394,14 +487,39 @@ def main():
 
     product_ids = insert_products(session, base_url, headers, fake, rows, common_rows)
 
+    # ------------------------------
+    # Configuración de patrones correlacionados
+    # - CORRELATED_TRIPLETS: cuántos patrones correlacionados crear (por defecto 30)
+    # - CORRELATION_PROB: probabilidad por orden de inyectar un patrón correlacionado (por defecto 0.25)
+    # Para cambiar la probabilidad, establece variables de entorno antes de ejecutar, por ejemplo:
+    #   $env:CORRELATED_TRIPLETS = '50'
+    #   $env:CORRELATION_PROB = '0.3'
+    # ------------------------------
+    correlated_count = int(os.environ.get("CORRELATED_TRIPLETS", "30"))
+    corr_prob = float(os.environ.get("CORRELATION_PROB", "0.25"))
+    # Generaremos patrones con 2 o 3 antecedentes (p.ej. {a,b}->{c} o {a,b,c}->{d})
+    correlated_patterns = []
+    if len(product_ids) >= 4 and correlated_count > 0:
+        for _ in range(correlated_count):
+            # choose antecedent size: 2 or 3 (bias can be adjusted here)
+            ant_size = random.choices([2, 3], weights=[0.6, 0.4])[0]
+            ants = random.sample(product_ids, ant_size)
+            # choose consequent distinct from antecedents
+            remaining = [p for p in product_ids if p not in ants]
+            if not remaining:
+                continue
+            cons = random.choice(remaining)
+            correlated_patterns.append((ants, cons))
+        print(f"Se generaron {len(correlated_patterns)} patrones correlacionados (prob={corr_prob}) para inyección en órdenes")
+    else:
+        correlated_patterns = None
+
     print(f"Insertando {rows} clientes via REST...")
     client_ids = insert_clients(session, base_url, headers, fake, rows)
 
-    print(f"Insertando {rows} órdenes via REST...")
-    order_ids = insert_orders(session, base_url, headers, fake, rows, client_ids)
-
-    print(f"Insertando {len(order_ids)} detalles de orden via REST...")
-    insert_order_details(session, base_url, headers, order_ids, product_ids, fake)
+    print(f"Insertando {rows} órdenes + detalles via REST...")
+    # nota: pasar `correlated_patterns` y `corr_prob` para inyectar patrones correlacionados en las órdenes
+    order_ids = insert_orders(session, base_url, headers, fake, rows, client_ids, product_ids, correlated_patterns, corr_prob)
 
     print("Actualizando totales de órdenes via REST...")
     update_order_totals(session, base_url, headers)

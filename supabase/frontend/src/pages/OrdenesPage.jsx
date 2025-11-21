@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { ordenesApi, clientesApi, productosApi } from '../services/api'
+import { ordenesApi, clientesApi, productosApi, recommendationsApi } from '../services/api'
 import { Edit, Trash2, Plus, Minus, Eye } from 'lucide-react'
 
 function OrdenForm({ orden, onSave, onCancel }) {
@@ -62,6 +62,7 @@ function OrdenForm({ orden, onSave, onCancel }) {
 
   const [clientes, setClientes] = useState([])
   const [productos, setProductos] = useState([])
+  const [recommended, setRecommended] = useState([])
 
   useEffect(() => {
     loadClientes()
@@ -150,6 +151,44 @@ function OrdenForm({ orden, onSave, onCancel }) {
         i === index ? { ...item, [field]: value } : item
       )
     }))
+  }
+
+  // load recommendations whenever selected product ids change
+  useEffect(() => {
+    const ids = formData.items.map(it => it.producto_id).filter(Boolean)
+    if (ids.length === 0) {
+      setRecommended([])
+      return
+    }
+
+    let cancelled = false
+    ;(async () => {
+      try {
+        const { data } = await recommendationsApi.getForAntecedents(ids)
+        if (!cancelled) setRecommended(data || [])
+      } catch (err) {
+        console.error('Error cargando recomendaciones:', err)
+        if (!cancelled) setRecommended([])
+      }
+    })()
+    return () => { cancelled = true }
+  }, [formData.items])
+
+  const addRecommendedProduct = (producto_id) => {
+    // if already present, increment cantidad
+    const existsIndex = formData.items.findIndex(it => String(it.producto_id) === String(producto_id))
+    if (existsIndex >= 0) {
+      setFormData(prev => ({
+        ...prev,
+        items: prev.items.map((it, i) => i === existsIndex ? { ...it, cantidad: (Number(it.cantidad)||0) + 1 } : it)
+      }))
+    } else {
+      // append new item with default quantity 1 and precio_unit 0
+      setFormData(prev => ({
+        ...prev,
+        items: [...prev.items, { producto_id: String(producto_id), cantidad: 1, precio_unit: 0 }]
+      }))
+    }
   }
 
   // submit handled by handleSubmitAsync below (prevents duplicate clicks)
@@ -345,6 +384,28 @@ function OrdenForm({ orden, onSave, onCancel }) {
         >
           <Plus size={16} /> Agregar Item
         </button>
+
+        {/* Recomendaciones basadas en reglas de asociación */}
+        {recommended && recommended.length > 0 && (
+          <div className="card" style={{ marginBottom: '1rem', padding: '1rem' }}>
+            <h4>Productos recomendados</h4>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+              {recommended.slice(0, 8).map(rec => {
+                const prod = rec.producto || {}
+                return (
+                  <div key={rec.producto_id} className="recommended-item" style={{ border: '1px solid #e0e0e0', padding: '0.5rem', borderRadius: '6px', minWidth: '200px' }}>
+                    <div style={{ fontWeight: '600' }}>{prod.sku ? `${prod.sku} - ${prod.nombre}` : prod.nombre || rec.producto_id}</div>
+                    <div style={{ fontSize: '0.85rem', color: '#666' }}>Score: {Math.round(rec.score*100)/100} · Lift: {Math.round((rec.avg_lift||0)*100)/100}</div>
+                    <div style={{ marginTop: '0.5rem' }}>
+                      <button type="button" className="btn btn-primary" onClick={() => addRecommendedProduct(rec.producto_id)}>Agregar</button>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+            <div style={{ marginTop: '0.5rem', fontSize: '0.85rem', color: '#666' }}>Las recomendaciones se calculan a partir de reglas de asociación definidas en el backend.</div>
+          </div>
+        )}
 
         <div className="form-group">
           <label>Total ({formData.moneda === 'USD' ? 'USD' : 'CRC'}):</label>

@@ -131,3 +131,113 @@ export const ordenesApi = {
 		return { data }
 	}
 }
+
+// Recommendations API: obtiene productos recomendados basados en reglas de asociación.
+// Ahora requiere que TODOS los antecedentes de una regla estén presentes (AND).
+export const recommendationsApi = {
+	// dado un array de producto_ids (strings or uuids), devuelve objetos { producto_id, score, avg_lift, producto, rules }
+	getForAntecedents: async (antecedentIds = []) => {
+		if (!antecedentIds || antecedentIds.length === 0) return { data: [] }
+
+		// 1) obtener rule_ids candidatos que contienen AL MENOS uno de los antecedentes
+		const { data: antRows, error: errAnt } = await supabase
+			.from('rule_antecedente')
+			.select('rule_id, producto_id')
+			.in('producto_id', antecedentIds)
+		if (errAnt) throw errAnt
+
+		const candidateRuleIds = Array.from(new Set((antRows || []).map(r => r.rule_id)))
+		if (candidateRuleIds.length === 0) return { data: [] }
+
+		// 2) obtener todos los antecedentes de esas reglas para comprobar que TODOS estén presentes
+		const { data: allAnts, error: errAllAnts } = await supabase
+			.from('rule_antecedente')
+			.select('rule_id, producto_id')
+			.in('rule_id', candidateRuleIds)
+		if (errAllAnts) throw errAllAnts
+
+		// agrupar antecedentes por rule_id
+		const antsByRule = new Map()
+		;(allAnts || []).forEach(a => {
+			const arr = antsByRule.get(a.rule_id) || []
+			arr.push(a.producto_id)
+			antsByRule.set(a.rule_id, arr)
+		})
+
+		const providedSet = new Set(antecedentIds.map(String))
+		// filtrar reglas cuyo conjunto de antecedentes esté completamente contenido en providedSet
+		const matchedRuleIds = []
+		for (const [ruleId, antList] of antsByRule.entries()) {
+			const antSet = new Set((antList || []).map(String))
+			let allPresent = true
+			for (const a of antSet) {
+				if (!providedSet.has(a)) {
+					allPresent = false
+					break
+				}
+			}
+			if (allPresent) matchedRuleIds.push(ruleId)
+		}
+
+		if (matchedRuleIds.length === 0) return { data: [] }
+
+		// 3) obtener las reglas y sus consecuentes únicamente para las reglas que coinciden totalmente
+		const { data: rules, error: errRules } = await supabase
+			.from('association_rule')
+			.select('rule_id, soporte, confianza, lift')
+			.in('rule_id', matchedRuleIds)
+		if (errRules) throw errRules
+
+		const { data: consRows, error: errCons } = await supabase
+			.from('rule_consecuente')
+			.select('rule_id, producto_id')
+			.in('rule_id', matchedRuleIds)
+		if (errCons) throw errCons
+
+		// 4) acumular scores por producto_id (sum of confidences), pero EXCLUIR productos que ya están en los antecedentes
+		const ruleMap = new Map((rules || []).map(r => [r.rule_id, r]))
+		const scoreMap = new Map()
+		const providedSetLower = new Set(Array.from(providedSet).map(String))
+		;(consRows || []).forEach(c => {
+			const rule = ruleMap.get(c.rule_id)
+			if (!rule) return
+			const pid = String(c.producto_id)
+			// excluir si el producto recomendado está dentro de los antecedentes proporcionados
+			if (providedSetLower.has(pid)) return
+			const score = Number(rule.confianza || 0)
+			const lift = Number(rule.lift || 0)
+			const prev = scoreMap.get(pid) || { score: 0, lifts: [], count: 0, rules: [] }
+			prev.score += score
+			prev.lifts.push(lift)
+			prev.count += 1
+			prev.rules.push(rule.rule_id)
+			scoreMap.set(pid, prev)
+		})
+
+		// 5) build list and fetch product details
+		const productIds = Array.from(scoreMap.keys())
+		if (productIds.length === 0) return { data: [] }
+
+		const { data: products, error: errProds } = await supabase.from('producto').select('*').in('producto_id', productIds)
+		if (errProds) throw errProds
+
+		const prodMap = new Map((products || []).map(p => [p.producto_id, p]))
+		const results = productIds.map(pid => {
+			const s = scoreMap.get(pid)
+			const avg_lift = (s.lifts.reduce((a,b)=>a+b,0) / Math.max(1, s.lifts.length))
+			const max_lift = Math.max(...s.lifts)
+			return {
+				producto_id: pid,
+				score: s.score,
+				avg_lift: avg_lift,
+				max_lift: max_lift,
+				lifts: s.lifts,
+				count: s.count,
+				producto: prodMap.get(pid) || null,
+				rules: s.rules
+			}
+		}).sort((a,b) => b.score - a.score)
+
+		return { data: results }
+	}
+}

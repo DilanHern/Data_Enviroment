@@ -251,6 +251,33 @@ def transformadoryloadsupaclientes(engine, supa, clientestable):
             emailexistente.append(email)
 
 
+def ensure_canales_exist(engine, required_canales=None):
+    if required_canales is None:
+        required_canales = ["WEB", "APP", "PARTNER"]
+
+    # Normalizar a mayúsculas
+    required_upper = [c.upper() for c in required_canales]
+
+    with engine.begin() as conn:
+        # Obtener los canales existentes (nombre) en uppercase
+        rows = conn.execute(text("SELECT Nombre FROM dbo.DimCanal")).fetchall()
+        existing = {str(r[0]).upper() for r in rows if r and r[0] is not None}
+
+        to_insert = [c for c in required_upper if c not in existing]
+        if not to_insert:
+            print(f"Canales ya presentes: {', '.join(required_upper)}")
+            return
+
+        for canal in to_insert:
+            # Insertar canal mínimo; si la tabla tiene más columnas requeridas,
+            # el insert puede necesitar adaptarse (por ahora solo Nombre).
+            conn.execute(
+                text("INSERT INTO dbo.DimCanal (Nombre) VALUES (:nombre)"),
+                {"nombre": canal}
+            )
+        print(f"Se insertaron canales faltantes: {', '.join(to_insert)}")
+
+
 ETL_DIR = os.path.dirname(__file__)
 LOG_DIR = os.path.join(ETL_DIR, "logVentasETLFechasIngreso")
 LOG_PATH = os.path.join(LOG_DIR, "logVentasIngreso.txt")
@@ -322,12 +349,14 @@ def traer_ordenes_por_fecha_supa(url, headers, fecha_min, fecha_max):
     return rows
 
 def diccionario_ordenes_por_cliente_fecha(ordenesfecha):
-    ordenes_cliente_fecha = defaultdict(lambda: defaultdict(list))
+    # estructura: cliente -> fecha -> canal -> [orden_id]
+    ordenes_cliente_fecha = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
 
     for o in ordenesfecha:
         cliente = o["cliente_id"]
         fecha = utc_a_hora_cr(o["fecha"])
-        ordenes_cliente_fecha[cliente][fecha].append(o["orden_id"])
+        canal = (o.get("canal") or "WEB").upper()
+        ordenes_cliente_fecha[cliente][fecha][canal].append(o["orden_id"])
 
     return ordenes_cliente_fecha
 
@@ -358,50 +387,53 @@ def agrupar_con_detalles(ordenes_cliente_fecha, ordenes_list, url, headers, sqlt
         except Exception:
             fecha_tipo_map[fecha_key] = None
 
-    # 5. Diccionario final: cliente → fecha → producto → métricas (en DÓLARES)
+    # 5. Diccionario final: cliente → fecha → canal → producto → métricas (en DÓLARES)
     resultado = defaultdict(
         lambda: defaultdict(
             lambda: defaultdict(
-                lambda: {"cantidad_total": 0, "monto_total": Decimal("0")}
+                lambda: defaultdict(
+                    lambda: {"cantidad_total": 0, "monto_total": Decimal("0")}
+                )
             )
         )
     )
 
     # 6. JUNTA EN CASO DE QUE HAYA UN CLIENTE CON MISMO PEDIDO DE PRODUCTO EN EL MISMO DIA VARIAS VECES
     for cliente, fechas in ordenes_cliente_fecha.items():
-        for fecha, ordenes in fechas.items():
+        for fecha, canales in fechas.items():
             # obtener tipo de cambio para la fecha (clave en formato ISO YYYY-MM-DD)
             tipo_cambio = fecha_tipo_map.get(fecha)
-            for orden_id in ordenes:
-                detalles = index_detalles.get(orden_id, [])
-                orden = orden_map.get(orden_id, {})
-                moneda = (orden.get("moneda") or "USD").upper()
+            for canal, ordenes in canales.items():
+                for orden_id in ordenes:
+                    detalles = index_detalles.get(orden_id, [])
+                    orden = orden_map.get(orden_id, {})
+                    moneda = (orden.get("moneda") or "USD").upper()
 
-                for det in detalles:
-                    producto = det["producto_id"]
-                    cantidad = det.get("cantidad", 0)
-                    precio = det.get("precio_unit", 0)
+                    for det in detalles:
+                        producto = det["producto_id"]
+                        cantidad = det.get("cantidad", 0)
+                        precio = det.get("precio_unit", 0)
 
-                    # convertir a Decimal para cálculos
-                    cantidad_dec = Decimal(str(cantidad))
-                    precio_dec = Decimal(str(precio))
-                    monto = cantidad_dec * precio_dec  # monto en la moneda de la orden
+                        # convertir a Decimal para cálculos
+                        cantidad_dec = Decimal(str(cantidad))
+                        precio_dec = Decimal(str(precio))
+                        monto = cantidad_dec * precio_dec  # monto en la moneda de la orden
 
-                    if moneda in ("CRC"):
-                        if tipo_cambio and tipo_cambio != 0:
-                            # monto en dólares = monto_en_colones / tipo_cambio (colones por dolar)
-                            monto_dolares = monto / tipo_cambio
+                        if moneda in ("CRC"):
+                            if tipo_cambio and tipo_cambio != 0:
+                                # monto en dólares = monto_en_colones / tipo_cambio (colones por dolar)
+                                monto_dolares = monto / tipo_cambio
+                            else:
+                                # si no hay tipo de cambio disponible, emitir advertencia y asumir no conversión
+                                print(f"Warning: TipoCambio no encontrado para fecha {fecha}, orden {orden_id}; se asume USD", file=sys.stderr)
+                                monto_dolares = monto
                         else:
-                            # si no hay tipo de cambio disponible, emitir advertencia y asumir no conversión
-                            print(f"Warning: TipoCambio no encontrado para fecha {fecha}, orden {orden_id}; se asume USD", file=sys.stderr)
+                            # ya está en dólares
                             monto_dolares = monto
-                    else:
-                        # ya está en dólares
-                        monto_dolares = monto
 
-                    # agregar a los acumulados (monto_total en DECIMAL USD)
-                    resultado[cliente][fecha][producto]["cantidad_total"] += cantidad_dec
-                    resultado[cliente][fecha][producto]["monto_total"] += monto_dolares
+                        # agregar a los acumulados (monto_total en DECIMAL USD)
+                        resultado[cliente][fecha][canal][producto]["cantidad_total"] += cantidad_dec
+                        resultado[cliente][fecha][canal][producto]["monto_total"] += monto_dolares
 
     return resultado
 
@@ -445,67 +477,96 @@ def findProductoId(sqltablaproducto, productobj):
     return None
 
 
-def transformadoryloadsupaVENTAS(engine, url, headers, ordenesfecha, sqltablafecha, sqltablacliente, sqltablaproducto):
+def findCanalId(sqltablacanal, canal_name):
+    if not canal_name:
+        return None
+    canal_up = canal_name.upper()
+    for row in (sqltablacanal or []):
+        nombre = row.get("Nombre") or row.get("Canal") or None
+        if nombre and str(nombre).upper() == canal_up:
+            return row.get("IdCanal")
+
+    print(f"NO SE ENCONTRO UN CANAL, revise DimCanal ({canal_up})")
+    return None
+
+
+def transformadoryloadsupaVENTAS(engine, url, headers, ordenesfecha, sqltablafecha, sqltablacliente, sqltablaproducto, sqltablacanal):
     ordenes_cliente_fecha = diccionario_ordenes_por_cliente_fecha(ordenesfecha)
-    ordenes_cliente_fecha_producto_metricas = agrupar_con_detalles(ordenes_cliente_fecha,ordenesfecha,url,headers,sqltablafecha)
+    ordenes_cliente_fecha_producto_metricas = agrupar_con_detalles(ordenes_cliente_fecha, ordenesfecha, url, headers, sqltablafecha)
     with engine.begin() as conn:
         for cliente, fechas in ordenes_cliente_fecha_producto_metricas.items():
-            idcliente = findClienteId( sqltablacliente, cliente)
+            idcliente = findClienteId(sqltablacliente, cliente)
             if idcliente is None:
                 print("Clienteid no existe conforme a esa factura")
                 continue
-            for fecha, productos in fechas.items():
+            for fecha, canales in fechas.items():
                 idtiempo = findFechaId(sqltablafecha, fecha)
                 if idtiempo is None:
                     continue
-                for producto, metricas in productos.items():
-                    idproducto = findProductoId(sqltablaproducto ,producto)
-                    total = metricas["monto_total"]
-                    cantidad = metricas["cantidad_total"]
-                    precio_unitario = total / cantidad if cantidad != 0 else 0
-                    row = conn.execute(
-                        text("""
-                            SELECT IdFactVentas, TotalVentas, Cantidad
-                            FROM dbo.FactVentas WHERE IdTiempo = :IdTiempo AND IdProducto = :IdProducto AND IdCliente = :IdCliente"""),
-                        {"IdTiempo": idtiempo,"IdProducto": idproducto,"IdCliente": idcliente}).fetchone()
+                for canal, productos in canales.items():
+                    idcanal = findCanalId(sqltablacanal, canal)
+                    if idcanal is None:
+                        print(f"Saltando ventas para canal desconocido: {canal}")
+                        continue
+                    for producto, metricas in productos.items():
+                        idproducto = findProductoId(sqltablaproducto, producto)
+                        if idproducto is None:
+                            print("Producto no encontrado, se salta")
+                            continue
+                        total = metricas["monto_total"]
+                        cantidad = metricas["cantidad_total"]
+                        precio_unitario = (total / cantidad) if cantidad != 0 else Decimal("0")
 
-                    if row:
-                        #Si ya existe entonces actualiza los datos en la tabla fact ventas
-                        idfact = row[0]
-
-                        total_prev = Decimal(row[1])           # viene como Decimal pero lo envolvemos por seguridad
-                        cantidad_prev = Decimal(row[2])
-
-                        total = Decimal(str(total))            # convertir el "total" del ETL a Decimal
-                        cantidad = Decimal(str(cantidad))      # convertir la cantidad a Decimal
-
-                        nuevo_total = total_prev + total
-                        nueva_cantidad = cantidad_prev + cantidad
-
-                        nuevo_precio = (nuevo_total / nueva_cantidad if nueva_cantidad != 0 else Decimal("0"))
-
-                        conn.execute(
+                        row = conn.execute(
                             text("""
-                                UPDATE dbo.FactVentas
-                                SET TotalVentas = :TotalVentas, Cantidad = :Cantidad, Precio = :Precio WHERE IdFactVentas = :IdFactVentas
-                            """),{"TotalVentas": nuevo_total,"Cantidad": nueva_cantidad,"Precio": nuevo_precio,"IdFactVentas": idfact})
-                    else:
-                        #Si no existe solo hace un insert y ya
-                        conn.execute(
-                            text("""
-                                INSERT INTO dbo.FactVentas 
-                                (IdTiempo, IdProducto, IdCliente, TotalVentas, Cantidad, Precio)
-                                VALUES (:IdTiempo, :IdProducto, :IdCliente, :TotalVentas, :Cantidad, :Precio)
+                                SELECT IdFactVentas, TotalVentas, Cantidad
+                                FROM dbo.FactVentas
+                                WHERE IdTiempo = :IdTiempo AND IdProducto = :IdProducto AND IdCliente = :IdCliente AND IdCanal = :IdCanal
                             """),
-                            {
-                                "IdTiempo": idtiempo,
-                                "IdProducto": idproducto,
-                                "IdCliente": idcliente,
-                                "TotalVentas": total,
-                                "Cantidad": cantidad,
-                                "Precio": precio_unitario
-                            }
-                        )
+                            {"IdTiempo": idtiempo, "IdProducto": idproducto, "IdCliente": idcliente, "IdCanal": idcanal}
+                        ).fetchone()
+
+                        if row:
+                            # Si ya existe entonces actualiza los datos en la tabla fact ventas
+                            idfact = row[0]
+
+                            total_prev = Decimal(row[1])           # viene como Decimal
+                            cantidad_prev = Decimal(row[2])
+
+                            total = Decimal(str(total))            # convertir el "total" del ETL a Decimal
+                            cantidad = Decimal(str(cantidad))      # convertir la cantidad a Decimal
+
+                            nuevo_total = total_prev + total
+                            nueva_cantidad = cantidad_prev + cantidad
+
+                            nuevo_precio = (nuevo_total / nueva_cantidad if nueva_cantidad != 0 else Decimal("0"))
+
+                            conn.execute(
+                                text("""
+                                    UPDATE dbo.FactVentas
+                                    SET TotalVentas = :TotalVentas, Cantidad = :Cantidad, Precio = :Precio
+                                    WHERE IdFactVentas = :IdFactVentas
+                                """),
+                                {"TotalVentas": nuevo_total, "Cantidad": nueva_cantidad, "Precio": nuevo_precio, "IdFactVentas": idfact}
+                            )
+                        else:
+                            # Si no existe solo hace un insert
+                            conn.execute(
+                                text("""
+                                    INSERT INTO dbo.FactVentas
+                                    (IdTiempo, IdProducto, IdCliente, IdCanal, TotalVentas, Cantidad, Precio)
+                                    VALUES (:IdTiempo, :IdProducto, :IdCliente, :IdCanal, :TotalVentas, :Cantidad, :Precio)
+                                """),
+                                {
+                                    "IdTiempo": idtiempo,
+                                    "IdProducto": idproducto,
+                                    "IdCliente": idcliente,
+                                    "IdCanal": idcanal,
+                                    "TotalVentas": total,
+                                    "Cantidad": cantidad,
+                                    "Precio": precio_unitario
+                                }
+                            )
 
 
 def run_etl():
@@ -518,11 +579,17 @@ def run_etl():
     contenidosproductossupa = traetablassupa(url, headers, "producto")
     
     enginesql = get_dw_engine()
+    # Asegurar que los canales mínimos existan en DimCanal al inicio del ETL
+    try:
+        ensure_canales_exist(enginesql)
+    except Exception as e:
+        print(f"Warning: fallo al asegurar canales en DimCanal: {e}", file=sys.stderr)
     contenidosproductossql = traetablassql(enginesql, "dbo.DimProducto")
     contenidoequivalencias = traetablassql(enginesql, "dbo.Equivalencias")
     contenidoclientessql = traetablassql(enginesql, "dbo.DimCliente")
     factVentas = traetablassql(enginesql, "dbo.FactVentas")
     tablafecha = traetablassql(enginesql, "dbo.DimTiempo")
+    contenidocanal = traetablassql(enginesql, "dbo.DimCanal")
 
     init_mapas(url, headers)
 
@@ -543,7 +610,7 @@ def run_etl():
     ordenesdetalle = traer_ordenes_por_fecha_supa(url,headers,fecha_min,fecha_max)
     #para crear las ventas hechas a un cliente de un producto en un dia
     try:
-        transformadoryloadsupaVENTAS(enginesql, url, headers, ordenesdetalle, tablafecha, contenidoclientessql, contenidosproductossql)
+        transformadoryloadsupaVENTAS(enginesql, url, headers, ordenesdetalle, tablafecha, contenidoclientessql, contenidosproductossql, contenidocanal)
     except Exception as e:
         print(f"Error procesando ventas — log no actualizado: {e}", file=sys.stderr)
         raise

@@ -1,8 +1,9 @@
 select * from Equivalencias;
 select * from DimProducto;
 select * from DimCliente;
-select * from FactVentas where IdTiempo = 1085;
-select * from DimTiempo where IdTiempo = 1085;
+select * from FactVentas;
+select * from DimCanal;
+select * from DimTiempo;
 
 
 Delete dbo.FactVentas;
@@ -10,6 +11,7 @@ Delete dbo.DimTiempo;
 Delete dbo.DimProducto;
 Delete dbo.DimCliente;
 Delete dbo.Equivalencias;
+DELETE dbo.DimCanal;
 DECLARE @table NVARCHAR(255);
 
 DECLARE cur CURSOR FOR
