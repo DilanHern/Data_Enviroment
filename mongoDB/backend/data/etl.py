@@ -376,7 +376,7 @@ class MongoToDW_ETL:
                         'producto_data': {'$first': '$producto_data'},
                         'fecha_original': {'$first': '$fecha'},
                         'cantidad_total': {'$sum': '$items.cantidad'},
-                        'precio_unit': {'$first': '$items.precio_unit'},
+                        'precio_unit_promedio': {'$avg': '$items.precio_unit'},
                         'total_ventas_crc': {'$sum': '$total_item'}
                     }
                 }
@@ -402,7 +402,7 @@ class MongoToDW_ETL:
                     fecha = venta['fecha_original']
                     cantidad_total = venta['cantidad_total']
                     total_crc = venta['total_ventas_crc']
-                    precio_unit_crc = venta['precio_unit']  
+                    precio_unit_crc = venta['precio_unit_promedio'] 
                     
                     
                     if not ultima_fecha_procesada or fecha.date() > ultima_fecha_procesada:
