@@ -165,10 +165,15 @@ export const recommendationsApi = {
 		})
 
 		const providedSet = new Set(antecedentIds.map(String))
-		// filtrar reglas cuyo conjunto de antecedentes esté completamente contenido en providedSet
+		// filtrar reglas cuyo conjunto de antecedentes sea EXACTAMENTE el conjunto proporcionado
+		// (mismo tamaño y mismos elementos). Esto evita incluir reglas cuyos
+		// antecedentes sean subconjuntos de los proporcionados.
 		const matchedRuleIds = []
 		for (const [ruleId, antList] of antsByRule.entries()) {
-			const antSet = new Set((antList || []).map(String))
+			const antArr = (antList || []).map(String)
+			const antSet = new Set(antArr)
+			// sizes must match exactly
+			if (antSet.size !== providedSet.size) continue
 			let allPresent = true
 			for (const a of antSet) {
 				if (!providedSet.has(a)) {

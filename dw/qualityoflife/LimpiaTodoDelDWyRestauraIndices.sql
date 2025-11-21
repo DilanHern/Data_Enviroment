@@ -5,7 +5,6 @@ select * from FactVentas;
 select * from DimCanal;
 select * from DimTiempo;
 
-
 Delete dbo.FactVentas;
 Delete dbo.DimTiempo;
 Delete dbo.DimProducto;
