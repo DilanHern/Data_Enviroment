@@ -1,6 +1,17 @@
+"""
+ETL para migrar datos de MySQL (sales_mysql) al Data Warehouse (DW_VENTAS)
+Basado en la estructura del ETL de SQL Server
+- Usa tabla de equivalencias para mapear productos (las equivalencias ya deben estar cargadas)
+- Convierte monedas CRC a USD usando tipo de cambio por fecha
+- Normaliza géneros y formatos de datos
+- Usa log para evitar duplicados en ejecuciones múltiples
+"""
+
 import pyodbc
+import mysql.connector
 import logging
 from datetime import datetime
+from decimal import Decimal
 import platform
 import os
 from dotenv import load_dotenv
@@ -10,17 +21,19 @@ load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), 'env.txt'))
 
 # Configuración de logging
 logging.basicConfig(
-    level=logging.INFO, 
+    level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 
-class SQLServerToDW_ETL:
+
+class MySQLToDW_ETL:
     def __init__(self):
-        # Configuración de SQL Server ORIGEN (ventas_ms)
-        self.source_server = os.getenv("SOURCE_SERVER", "localhost")
-        self.source_database = os.getenv("SOURCE_DATABASE", "ventas_ms")
-        self.source_username = os.getenv("SOURCE_USERNAME")
-        self.source_password = os.getenv("SOURCE_PASSWORD")
+        # Configuración de MySQL ORIGEN (sales_mysql)
+        self.mysql_host = os.getenv("MYSQL_HOST", "localhost")
+        self.mysql_port = int(os.getenv("MYSQL_PORT", "3306"))
+        self.mysql_user = os.getenv("MYSQL_USER", "root")
+        self.mysql_password = os.getenv("MYSQL_PASSWORD", "")
+        self.mysql_database = os.getenv("MYSQL_DATABASE", "sales_mysql")
         
         # Configuración de SQL Server DESTINO (DW_VENTAS)
         self.dw_server = os.getenv("DW_SERVER", "localhost")
@@ -34,50 +47,35 @@ class SQLServerToDW_ETL:
         else:
             self.driver = "ODBC Driver 18 for SQL Server"
         
-        self.source_connection = None
+        self.mysql_connection = None
         self.dw_connection = None
         
         # Mapping de género según especificaciones
         self.genero_mapping = {
-            'Masculino': 'M',
             'M': 'M',
-            'Femenino': 'F',
             'F': 'F',
-            'Otro': 'X',
             'X': 'X'
         }
         
         # Sistema de origen para logging
-        self.source_system = 'SQLSERVER'
+        self.source_system = 'MYSQL'
         
         # Tipo de cambio por defecto CRC→USD si no se encuentra en la tabla
         self.default_crc_to_usd_rate = 0.0019  # ~520 CRC por USD
-        
-    def connect_source(self):
-        """Conecta a la base de datos SQL Server origen (ventas_ms)"""
+    
+    def connect_mysql(self):
+        """Conecta a la base de datos MySQL origen (sales_mysql)"""
         try:
-            if self.source_username and self.source_password:
-                connection_string = (
-                    f"DRIVER={{{self.driver}}};"
-                    f"SERVER={self.source_server};"
-                    f"DATABASE={self.source_database};"
-                    f"UID={self.source_username};"
-                    f"PWD={self.source_password};"
-                    f"TrustServerCertificate=yes;"
-                )
-            else:
-                # Usar autenticación de Windows
-                connection_string = (
-                    f"DRIVER={{{self.driver}}};"
-                    f"SERVER={self.source_server};"
-                    f"DATABASE={self.source_database};"
-                    f"Trusted_Connection=yes;"
-                )
-            
-            self.source_connection = pyodbc.connect(connection_string)
-            logging.info(f"Conexión exitosa a SQL Server origen: {self.source_database}")
+            self.mysql_connection = mysql.connector.connect(
+                host=self.mysql_host,
+                port=self.mysql_port,
+                user=self.mysql_user,
+                password=self.mysql_password,
+                database=self.mysql_database
+            )
+            logging.info(f"Conexión exitosa a MySQL origen: {self.mysql_database}")
         except Exception as e:
-            logging.error(f"Error conectando a SQL Server origen: {e}")
+            logging.error(f"Error conectando a MySQL origen: {e}")
             raise
     
     def connect_dw(self):
@@ -109,7 +107,7 @@ class SQLServerToDW_ETL:
     
     def check_if_processed(self, source_key, table_name):
         """
-        Verifica si un registro ya fue procesado usando la tabla Equivalencias como log.
+        Verifica si un registro ya fue procesado.
         Retorna True si ya fue procesado, False si no.
         """
         try:
@@ -122,20 +120,67 @@ class SQLServerToDW_ETL:
                 result = cursor.fetchone()
                 return result is not None
             
-            # Para productos, verificamos en Equivalencias
+            # Para productos, verificamos en Equivalencias por CodigoAlt
             elif table_name == 'Producto':
-                query = "SELECT Id FROM Equivalencias WHERE SKU = ?"
+                query = "SELECT Id FROM Equivalencias WHERE CodigoAlt = ?"
                 cursor.execute(query, source_key)
                 result = cursor.fetchone()
                 return result is not None
             
-            # Para órdenes, verificamos si existe una venta con esos datos
-            # (esto se maneja diferente en process_orders)
             return False
             
         except Exception as e:
             logging.error(f"Error verificando si fue procesado: {e}")
             return False
+    
+    def clean_number(self, value_str):
+        """
+        Limpia un número que viene como string con posibles comas/puntos
+        Ejemplos: '1,200.50' → 1200.50, '1200,50' → 1200.50, '1200.50' → 1200.50
+        """
+        if not value_str:
+            return Decimal('0.00')
+        
+        value_str = str(value_str).strip()
+        
+        # Si tiene punto Y coma, la coma es separador de miles
+        if ',' in value_str and '.' in value_str:
+            value_str = value_str.replace(',', '')
+        # Si solo tiene coma, es el decimal
+        elif ',' in value_str and '.' not in value_str:
+            value_str = value_str.replace(',', '.')
+        
+        try:
+            return Decimal(value_str)
+        except:
+            return Decimal('0.00')
+    
+    def get_exchange_rate(self, fecha, moneda_origen='CRC', moneda_destino='USD'):
+        """
+        Obtiene el tipo de cambio para una fecha específica desde DimTiempo.
+        Si la moneda origen ya es USD, retorna 1.0
+        """
+        if moneda_origen == 'USD':
+            return Decimal('1.0')
+        
+        try:
+            cursor = self.dw_connection.cursor()
+            
+            # Buscar tipo de cambio en DimTiempo para esa fecha
+            query = "SELECT TOP 1 TipoCambio FROM DimTiempo WHERE Fecha = ?"
+            cursor.execute(query, fecha)
+            
+            result = cursor.fetchone()
+            if result and result[0]:
+                return Decimal(str(result[0]))
+            
+            # Si no hay tipo de cambio, usar valor por defecto
+            logging.warning(f"No se encontró tipo de cambio para {fecha}, usando tasa por defecto")
+            return Decimal(str(self.default_crc_to_usd_rate))
+            
+        except Exception as e:
+            logging.error(f"Error obteniendo tipo de cambio: {e}")
+            return Decimal(str(self.default_crc_to_usd_rate))
     
     def get_or_create_cliente(self, cliente_data):
         """
@@ -156,10 +201,13 @@ class SQLServerToDW_ETL:
             # Si no existe, crear uno nuevo
             genero_mapeado = self.genero_mapping.get(cliente_data['genero'], 'X')
             
-            # Convertir fecha_registro a date si es datetime
-            fecha_reg = cliente_data['fecha_registro']
-            if hasattr(fecha_reg, 'date'):
-                fecha_reg = fecha_reg.date()
+            # Parsear fecha de created_at (viene como 'YYYY-MM-DD')
+            fecha_creacion = None
+            if cliente_data['created_at']:
+                try:
+                    fecha_creacion = datetime.strptime(cliente_data['created_at'], '%Y-%m-%d').date()
+                except:
+                    fecha_creacion = None
             
             insert_query = """
                 INSERT INTO DimCliente (Nombre, Email, Genero, Pais, FechaCreacion)
@@ -170,7 +218,7 @@ class SQLServerToDW_ETL:
                 cliente_data['email'],
                 genero_mapeado,
                 cliente_data['pais'],
-                fecha_reg
+                fecha_creacion
             ))
             
             cursor.execute("SELECT @@IDENTITY")
@@ -187,24 +235,24 @@ class SQLServerToDW_ETL:
     def process_equivalencias_and_get_producto(self, producto_data):
         """
         Procesa equivalencias y obtiene/crea un producto en DimProducto.
-        Usa la tabla Equivalencias para mapear SKU de diferentes fuentes.
+        Usa la tabla Equivalencias para mapear codigo_alt a SKU.
         """
         try:
             cursor = self.dw_connection.cursor()
             
-            sku = producto_data['sku']
+            codigo_alt = producto_data['codigo_alt']
             nombre = producto_data['nombre']
             categoria = producto_data['categoria']
             
-            # Buscar si ya existe una equivalencia para este SKU
-            query = "SELECT Id, SKU FROM Equivalencias WHERE SKU = ?"
-            cursor.execute(query, sku)
+            # Buscar si ya existe una equivalencia para este codigo_alt
+            query = "SELECT Id, SKU, CodigoAlt FROM Equivalencias WHERE CodigoAlt = ?"
+            cursor.execute(query, codigo_alt)
             result = cursor.fetchone()
             
             if result:
                 equivalencia_id = result[0]
                 sku_oficial = result[1]
-                logging.info(f"Encontrada equivalencia existente para SKU: {sku_oficial}")
+                logging.info(f"Encontrada equivalencia existente para CodigoAlt: {codigo_alt} -> SKU: {sku_oficial}")
                 
                 # Buscar el producto por SKU oficial
                 query = "SELECT IdProducto FROM DimProducto WHERE SKU = ?"
@@ -215,17 +263,21 @@ class SQLServerToDW_ETL:
                     logging.info(f"Encontrado producto existente - ID: {producto_id}")
                     return int(producto_id)
             
-            # Si no existe equivalencia, crear una nueva
+            # Si no existe equivalencia, crear una nueva solo con CodigoAlt
             if not result:
                 insert_query = """
                     INSERT INTO Equivalencias (SKU, CodigoMongo, CodigoAlt)
-                    VALUES (?, NULL, NULL)
+                    VALUES (NULL, NULL, ?)
                 """
-                cursor.execute(insert_query, sku)
+                cursor.execute(insert_query, (codigo_alt,))
                 cursor.execute("SELECT @@IDENTITY")
                 equivalencia_id = cursor.fetchone()[0]
-                sku_oficial = sku
-                logging.info(f"Nueva equivalencia creada - ID: {equivalencia_id}, SKU: {sku_oficial}")
+                logging.info(f"Nueva equivalencia creada - ID: {equivalencia_id}, CodigoAlt: {codigo_alt} (sin SKU)")
+                sku_oficial = None
+            
+            # Si no hay SKU, usar el CodigoAlt como identificador en DimProducto
+            if not sku_oficial:
+                sku_oficial = codigo_alt
             
             # Buscar el producto por SKU
             query = "SELECT IdProducto FROM DimProducto WHERE SKU = ?"
@@ -288,7 +340,9 @@ class SQLServerToDW_ETL:
             dia = fecha_obj.day
             semana = fecha_obj.isocalendar()[1]
             dia_semana = fecha_obj.strftime('%A')
-            tipo_cambio = 1.0  # USD por defecto
+            
+            # Obtener tipo de cambio desde DimTiempo si existe, sino usar 1.0
+            tipo_cambio = 1.0
             
             cursor.execute(insert_query, (
                 anio, mes, dia, fecha_buscar, semana, dia_semana, tipo_cambio
@@ -336,47 +390,48 @@ class SQLServerToDW_ETL:
     
     def process_orders(self, limit=None):
         """
-        Procesa las órdenes desde SQL Server origen y las carga en FactVentas.
+        Procesa las órdenes desde MySQL y las carga en FactVentas.
         Agrupa por cliente, producto y fecha para evitar duplicados.
         """
         try:
-            source_cursor = self.source_connection.cursor()
+            mysql_cursor = self.mysql_connection.cursor(dictionary=True)
             
-            # Query para obtener ventas agregadas por cliente/producto/fecha/canal
+            # Query para obtener ventas agregadas por cliente/producto/fecha
             query = """
                 SELECT 
-                    c.ClienteId,
-                    c.Nombre,
-                    c.Email,
-                    c.Genero,
-                    c.Pais,
-                    c.FechaRegistro,
-                    p.ProductoId,
-                    p.SKU,
-                    p.Nombre as ProductoNombre,
-                    p.Categoria,
-                    CAST(o.Fecha AS DATE) as Fecha,
-                    o.Canal,
-                    SUM(od.Cantidad) as CantidadTotal,
-                    AVG(od.PrecioUnit) as PrecioUnitPromedio,
-                    SUM(od.Cantidad * od.PrecioUnit * (1 - ISNULL(od.DescuentoPct, 0) / 100)) as TotalVentas
-                FROM sales_ms.OrdenDetalle od
-                INNER JOIN sales_ms.Orden o ON od.OrdenId = o.OrdenId
-                INNER JOIN sales_ms.Producto p ON od.ProductoId = p.ProductoId
-                INNER JOIN sales_ms.Cliente c ON o.ClienteId = c.ClienteId
+                    c.id as cliente_id,
+                    c.nombre,
+                    c.correo,
+                    c.genero,
+                    c.pais,
+                    c.created_at,
+                    p.id as producto_id,
+                    p.codigo_alt,
+                    p.nombre as producto_nombre,
+                    p.categoria,
+                    DATE(o.fecha) as fecha,
+                    o.canal,
+                    o.moneda,
+                    SUM(od.cantidad) as cantidad_total,
+                    AVG(CAST(REPLACE(REPLACE(od.precio_unit, ',', ''), ' ', '') AS DECIMAL(18,2))) as precio_promedio,
+                    SUM(od.cantidad * CAST(REPLACE(REPLACE(od.precio_unit, ',', ''), ' ', '') AS DECIMAL(18,2))) as total_ventas
+                FROM OrdenDetalle od
+                INNER JOIN Orden o ON od.orden_id = o.id
+                INNER JOIN Producto p ON od.producto_id = p.id
+                INNER JOIN Cliente c ON o.cliente_id = c.id
                 GROUP BY 
-                    c.ClienteId, c.Nombre, c.Email, c.Genero, c.Pais, c.FechaRegistro,
-                    p.ProductoId, p.SKU, p.Nombre, p.Categoria,
-                    CAST(o.Fecha AS DATE), o.Canal
+                    c.id, c.nombre, c.correo, c.genero, c.pais, c.created_at,
+                    p.id, p.codigo_alt, p.nombre, p.categoria,
+                    DATE(o.fecha), o.canal, o.moneda
             """
             
             if limit:
-                query += f" ORDER BY o.Fecha DESC OFFSET 0 ROWS FETCH NEXT {limit} ROWS ONLY"
+                query += f" LIMIT {limit}"
             
-            source_cursor.execute(query)
-            ventas = source_cursor.fetchall()
+            mysql_cursor.execute(query)
+            ventas = mysql_cursor.fetchall()
             
-            logging.info(f"Procesando {len(ventas)} registros agregados de ventas")
+            logging.info(f"Procesando {len(ventas)} registros agregados de ventas desde MySQL")
             
             processed_count = 0
             error_count = 0
@@ -386,26 +441,27 @@ class SQLServerToDW_ETL:
                 try:
                     # Extraer datos del cliente
                     cliente_data = {
-                        'nombre': venta[1],
-                        'email': venta[2],
-                        'genero': venta[3],
-                        'pais': venta[4],
-                        'fecha_registro': venta[5]
+                        'nombre': venta['nombre'],
+                        'email': venta['correo'],
+                        'genero': venta['genero'],
+                        'pais': venta['pais'],
+                        'created_at': venta['created_at']
                     }
                     
                     # Extraer datos del producto
                     producto_data = {
-                        'sku': venta[7],
-                        'nombre': venta[8],
-                        'categoria': venta[9]
+                        'codigo_alt': venta['codigo_alt'],
+                        'nombre': venta['producto_nombre'],
+                        'categoria': venta['categoria']
                     }
                     
-                    # Datos de la venta (todos los montos están en USD)
-                    fecha = venta[10]
-                    canal = venta[11]
-                    cantidad_total = venta[12]
-                    precio_unit_promedio = venta[13]
-                    total_ventas = venta[14]
+                    # Datos de la venta
+                    fecha = venta['fecha']
+                    canal = venta['canal']
+                    moneda = venta['moneda']
+                    cantidad_total = venta['cantidad_total']
+                    precio_promedio = Decimal(str(venta['precio_promedio']))
+                    total_ventas = Decimal(str(venta['total_ventas']))
                     
                     # Verificar si esta combinación ya fue procesada
                     dw_cursor = self.dw_connection.cursor()
@@ -415,9 +471,10 @@ class SQLServerToDW_ETL:
                         INNER JOIN DimCliente c ON fv.IdCliente = c.IdCliente
                         INNER JOIN DimProducto p ON fv.IdProducto = p.IdProducto
                         INNER JOIN DimTiempo t ON fv.IdTiempo = t.IdTiempo
-                        WHERE c.Email = ? AND p.SKU = ? AND t.Fecha = ?
+                        INNER JOIN Equivalencias e ON p.SKU = e.SKU
+                        WHERE c.Email = ? AND e.CodigoAlt = ? AND t.Fecha = ?
                     """
-                    dw_cursor.execute(check_query, (cliente_data['email'], producto_data['sku'], fecha))
+                    dw_cursor.execute(check_query, (cliente_data['email'], producto_data['codigo_alt'], fecha))
                     count_result = dw_cursor.fetchone()
                     
                     if count_result and count_result[0] > 0:
@@ -450,7 +507,16 @@ class SQLServerToDW_ETL:
                         error_count += 1
                         continue
                     
-                    # Insertar en FactVentas (montos ya están en USD)
+                    # Convertir moneda si es necesario
+                    if moneda == 'CRC':
+                        tipo_cambio = self.get_exchange_rate(fecha, 'CRC', 'USD')
+                        precio_usd = precio_promedio * tipo_cambio
+                        total_usd = total_ventas * tipo_cambio
+                    else:
+                        precio_usd = precio_promedio
+                        total_usd = total_ventas
+                    
+                    # Insertar en FactVentas
                     insert_cursor = self.dw_connection.cursor()
                     insert_query = """
                         INSERT INTO FactVentas (IdTiempo, IdProducto, IdCliente, IdCanal, TotalVentas, Cantidad, Precio)
@@ -462,9 +528,9 @@ class SQLServerToDW_ETL:
                         producto_id,
                         cliente_id,
                         canal_id,
-                        round(total_ventas, 2),
+                        round(float(total_usd), 2),
                         cantidad_total,
-                        round(precio_unit_promedio, 2)
+                        round(float(precio_usd), 2)
                     ))
                     
                     processed_count += 1
@@ -490,69 +556,16 @@ class SQLServerToDW_ETL:
             logging.error(f"Error en process_orders: {e}")
             raise
     
-    def load_exchange_rates_from_file(self, filepath='tipos_cambio.csv'):
-        """
-        Carga tipos de cambio desde un archivo CSV.
-        Formato esperado: Fecha,MonedaOrigen,MonedaDestino,Tasa
-        Ejemplo: 2025-01-01,CRC,USD,0.0019
-        """
-        try:
-            import csv
-            from datetime import datetime as dt
-            
-            if not os.path.exists(filepath):
-                logging.warning(f"Archivo {filepath} no encontrado, saltando carga de tipos de cambio")
-                return
-            
-            cursor = self.dw_connection.cursor()
-            inserted = 0
-            
-            with open(filepath, 'r') as f:
-                reader = csv.DictReader(f)
-                for row in reader:
-                    try:
-                        fecha = dt.strptime(row['Fecha'], '%Y-%m-%d').date()
-                        moneda_origen = row['MonedaOrigen']
-                        moneda_destino = row['MonedaDestino']
-                        tasa = float(row['Tasa'])
-                        
-                        # Verificar si ya existe
-                        check_query = """
-                            SELECT COUNT(*) FROM dbo.TipoCambio 
-                            WHERE Fecha = ? AND MonedaOrigen = ? AND MonedaDestino = ?
-                        """
-                        cursor.execute(check_query, (fecha, moneda_origen, moneda_destino))
-                        if cursor.fetchone()[0] == 0:
-                            insert_query = """
-                                INSERT INTO dbo.TipoCambio (Fecha, MonedaOrigen, MonedaDestino, Tasa)
-                                VALUES (?, ?, ?, ?)
-                            """
-                            cursor.execute(insert_query, (fecha, moneda_origen, moneda_destino, tasa))
-                            inserted += 1
-                    except Exception as e:
-                        logging.warning(f"Error insertando tipo de cambio: {e}")
-                        continue
-            
-            self.dw_connection.commit()
-            logging.info(f"Tipos de cambio cargados desde archivo: {inserted} registros nuevos")
-            
-        except Exception as e:
-            logging.error(f"Error cargando tipos de cambio desde archivo: {e}")
-    
-    def run_etl(self, limit=None, load_exchange_rates=True):
+    def run_etl(self, limit=None):
         """Ejecuta el proceso completo de ETL"""
         try:
             logging.info("="*60)
-            logging.info("Iniciando ETL: SQL Server (ventas_ms) -> Data Warehouse")
+            logging.info("Iniciando ETL: MySQL (sales_mysql) -> Data Warehouse")
             logging.info("="*60)
             
             # Conectar a ambas bases de datos
-            self.connect_source()
+            self.connect_mysql()
             self.connect_dw()
-            
-            # Cargar tipos de cambio si está habilitado
-            if load_exchange_rates:
-                self.load_exchange_rates_from_file()
             
             # Procesar órdenes
             self.process_orders(limit)
@@ -566,9 +579,9 @@ class SQLServerToDW_ETL:
             raise
         finally:
             # Cerrar conexiones
-            if self.source_connection:
-                self.source_connection.close()
-                logging.info("Conexión SQL Server origen cerrada")
+            if self.mysql_connection:
+                self.mysql_connection.close()
+                logging.info("Conexión MySQL origen cerrada")
             
             if self.dw_connection:
                 self.dw_connection.close()
@@ -576,6 +589,6 @@ class SQLServerToDW_ETL:
 
 
 if __name__ == "__main__":
-    etl = SQLServerToDW_ETL()
+    etl = MySQLToDW_ETL()
     # Ejecutar sin límite para procesar todos los registros
     etl.run_etl()
