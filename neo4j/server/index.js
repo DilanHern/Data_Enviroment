@@ -1,15 +1,21 @@
 const express = require('express');
 const neo4j = require('neo4j-driver');
 const cors = require('cors');
+// Cargar variables de entorno desde .env
+require('dotenv').config();
 
 const app = express();
-const port = 3000;
+const port = process.env.PORT || 3000;
 
-// Configura la conexión a Neo4j (ajusta usuario y contraseña si es necesario)
+// Configura la conexión a Neo4j usando variables de entorno
+const NEO4J_URI = process.env.NEO4J_URI || 'neo4j://localhost:7687';
+const NEO4J_USER = process.env.NEO4J_USER || 'neo4j';
+const NEO4J_PASSWORD = process.env.NEO4J_PASSWORD || 'password';
+const NEO4J_DATABASE = process.env.NEO4J_DATABASE || 'ventas';
+
 const driver = neo4j.driver(
-  'neo4j://localhost:7687',
-  neo4j.auth.basic('neo4j', 'dilan2005'), // Cambia 'password' por tu contraseña real
-  { database: 'ventas' }
+  NEO4J_URI,
+  neo4j.auth.basic(NEO4J_USER, NEO4J_PASSWORD)
 );
 
 app.use(cors());

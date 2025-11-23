@@ -3,11 +3,15 @@ import json
 from neo4j import GraphDatabase
 import pyodbc
 from datetime import datetime, date
+from dotenv import load_dotenv
+
+# Cargar .env (si existe)
+load_dotenv()
 
 NEO4J_URI = os.getenv("NEO4J_URI", "bolt://localhost:7687")
 NEO4J_USER = os.getenv("NEO4J_USER", "neo4j")
-NEO4J_PASS = os.getenv("NEO4J_PASS", "dilan2005")
-DB_NAME = "ventas"  # base de datos a extraer
+NEO4J_PASS = os.getenv("NEO4J_PASS", "")
+DB_NAME = os.getenv("NEO4J_DATABASE", "ventas")  # base de datos a extraer
 #configuracion log
 LOG_PATH = os.getenv("LOG_PATH", "etl_ventas.log")
 LOG_FECHA_DEFAULT = datetime(1970, 1, 1).isoformat() + "Z"
@@ -138,9 +142,9 @@ def get_max_fecha_from_nodes(nodes_path="nodes.jsonl"):
     return None
 
 def connect_sqlserver():
-    SQL_SERVER = "localhost"
-    SQL_DRIVER = "ODBC Driver 17 for SQL Server"
-    SQL_DB = "DW_VENTAS"
+    SQL_SERVER = os.getenv("SQL_SERVER", "localhost")
+    SQL_DRIVER = os.getenv("SQL_DRIVER", "ODBC Driver 17 for SQL Server")
+    SQL_DB = os.getenv("SQL_DB", "DW_VENTAS")
 
     conn_str = (
         f"DRIVER={{{SQL_DRIVER}}};"
