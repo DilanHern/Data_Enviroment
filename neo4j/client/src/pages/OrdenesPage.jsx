@@ -5,7 +5,6 @@ import { Edit, Trash2, Plus, Minus } from 'lucide-react'
 function OrdenForm({ orden, onSave, onCancel }) {
   const [formData, setFormData] = useState({
     cliente_id: '',
-    fecha: new Date().toISOString().slice(0, 16),
     canal: 'WEB',
     moneda: 'CRC',
     total: 0,
@@ -20,32 +19,6 @@ useEffect(() => {
     loadClientes()
     loadProductos()
     if (orden) {
-      // Normalizar fecha
-      let fechaValue = ''
-      if (orden.fecha) {
-        if (typeof orden.fecha === 'string' || orden.fecha instanceof Date) {
-          fechaValue = new Date(orden.fecha)
-        } else if (
-          typeof orden.fecha === 'object' &&
-          (orden.fecha.year || orden.fecha.year === 0) &&
-          (orden.fecha.month || orden.fecha.month === 0) &&
-          (orden.fecha.day || orden.fecha.day === 0)
-        ) {
-          // Extraer valores .low o usar el valor directo, y asegurar que existan
-          const getVal = v => (typeof v === 'object' && v !== null && 'low' in v) ? v.low : v ?? 0
-          const year = getVal(orden.fecha.year)
-          const month = getVal(orden.fecha.month) // API retorna 1-12, input datetime-local usa 1-12
-          const day = getVal(orden.fecha.day)
-          const hour = getVal(orden.fecha.hour)
-          const minute = getVal(orden.fecha.minute)
-          // Crear fecha con formato ISO para datetime-local (usa mes 1-12)
-          const monthStr = String(month).padStart(2, '0')
-          const dayStr = String(day).padStart(2, '0')
-          const hourStr = String(hour).padStart(2, '0')
-          const minuteStr = String(minute).padStart(2, '0')
-          fechaValue = `${year}-${monthStr}-${dayStr}T${hourStr}:${minuteStr}`
-        }
-      }
       
       // Transformar productos a items si vienen de la API
       let items = [{ producto_id: '', cantidad: 1, precio_unit: 0 }]
@@ -68,11 +41,6 @@ useEffect(() => {
           : orden.cliente && orden.cliente.id
             ? String(orden.cliente.id)
             : '',
-        fecha: typeof fechaValue === 'string'
-          ? fechaValue
-          : (fechaValue && !isNaN(fechaValue.getTime()))
-            ? fechaValue.toISOString().slice(0, 16)
-            : new Date().toISOString().slice(0, 16),
         metadatos: orden.metadatos || {},
         items: items
       })
@@ -149,15 +117,8 @@ useEffect(() => {
   const handleSubmit = (e) => {
     e.preventDefault()
     
-    // Convertir fecha a ISO sin milisegundos (ej. 2025-03-27T16:02:07Z)
-    const fechaObj = new Date(formData.fecha)
-    const fechaIsoNoMs = isNaN(fechaObj.getTime())
-      ? new Date().toISOString().replace(/\.\d{3}Z$/, 'Z')
-      : fechaObj.toISOString().replace(/\.\d{3}Z$/, 'Z')
-
     const submitData = {
       ...formData,
-      fecha: fechaIsoNoMs,
       // recalcular total con decimales por seguridad
       total: formData.items.reduce((s, it) => s + (Number(it.cantidad) * Number(it.precio_unit || 0)), 0),
       items: formData.items.map(item => ({
@@ -190,15 +151,7 @@ useEffect(() => {
               ))}
             </select>
           </div>
-          <div className="form-group">
-            <label>Fecha:</label>
-            <input
-              type="datetime-local"
-              value={formData.fecha}
-              onChange={(e) => setFormData({ ...formData, fecha: e.target.value })}
-              required
-            />
-          </div>
+          {/* Fecha eliminada: ahora se asigna automáticamente en el servidor */}
         </div>
         
         <div className="form-row">

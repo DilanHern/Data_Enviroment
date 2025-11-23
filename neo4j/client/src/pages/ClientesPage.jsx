@@ -6,7 +6,8 @@ function ClienteForm({ cliente, onSave, onCancel }) {
   const [formData, setFormData] = useState({
     nombre: '',
     genero: 'Masculino',
-    pais: 'CR'
+    pais: 'CR',
+    email: ''
   });
 
   useEffect(() => {
@@ -15,7 +16,8 @@ function ClienteForm({ cliente, onSave, onCancel }) {
       setFormData({
         nombre: cliente.nombre || '',
         genero: cliente.genero || 'Masculino',
-        pais: cliente.pais || 'CR'
+        pais: cliente.pais || 'CR',
+        email: cliente.email || cliente.correo || ''
       });
     }
   }, [cliente]);
@@ -64,6 +66,17 @@ function ClienteForm({ cliente, onSave, onCancel }) {
             />
           </div>
         </div>
+        <div className="form-row">
+          <div className="form-group">
+            <label>Email:</label>
+            <input
+              type="email"
+              value={formData.email}
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              required
+            />
+          </div>
+        </div>
         <div>
           <button type="submit" className="btn btn-success">
             {cliente ? 'Actualizar' : 'Crear'}
@@ -106,6 +119,8 @@ function ClientesPage() {
 
   const handleSave = async (clienteData) => {
     try {
+      // limpiar error previo
+      setError('')
       if (editingCliente) {
         // Usa id o _id según lo que exista
         const clienteId = editingCliente.id || editingCliente._id;
@@ -123,12 +138,20 @@ function ClientesPage() {
       setShowForm(false)
       setEditingCliente(null)
     } catch (error) {
-      setError('Error al guardar cliente')
       console.error(error)
+      // Si el backend devuelve 409 por email duplicado, mostrar mensaje específico
+      if (error && error.response && error.response.status === 409) {
+        // Usar el mensaje enviado por el servidor si existe, si no usar texto por defecto
+        const serverMsg = error.response.data && error.response.data.error ? error.response.data.error : 'El email ya está en uso';
+        setError(serverMsg)
+      } else {
+        setError('Error al guardar cliente')
+      }
     }
   }
 
   const handleEdit = (cliente) => {
+      setError('')
     setEditingCliente(cliente)
     setShowForm(true)
   }
@@ -204,6 +227,7 @@ function ClientesPage() {
               <tr>
                 <th>ID</th>
                 <th>Nombre</th>
+                <th>Email</th>
                 <th>Género</th>
                 <th>País</th>
                 <th>Acciones</th>
@@ -214,6 +238,7 @@ function ClientesPage() {
                 <tr key={cliente.id || cliente._id || idx}>
                   <td>{cliente.id || cliente._id}</td>
                   <td>{cliente.nombre}</td>
+                  <td>{cliente.email || cliente.correo || ''}</td>
                   <td>{cliente.genero}</td>
                   <td>{cliente.pais}</td>
                   <td>

@@ -6,25 +6,22 @@ module.exports = (driver) => {
 
   // Crear orden
   router.post('/', async (req, res) => {
-    let { id, fecha, canal, moneda, total, cliente_id, items } = req.body;
+    let { id, canal, moneda, total, cliente_id, items } = req.body;
     items = items || []
     const session = driver.session(dbOpts);
     try {
       // generate id if not provided
       const orderId = id || `ORD-${Date.now()}`
 
-      // Create order node (with fecha if provided)
-      if (fecha) {
-        await session.run(
-          'CREATE (o:Orden {id: $id, canal: $canal, moneda: $moneda, total: $total}) SET o.fecha = datetime($fecha) RETURN o',
-          { id: orderId, fecha, canal, moneda, total }
-        );
-      } else {
-        await session.run(
-          'CREATE (o:Orden {id: $id, canal: $canal, moneda: $moneda, total: $total}) RETURN o',
-          { id: orderId, canal, moneda, total }
-        );
-      }
+      // Generate automatic UTC timestamp with 9 fractional digits like 2024-10-25T03:29:51.587000000Z
+      const iso = new Date().toISOString(); // e.g. 2024-10-25T03:29:51.587Z
+      const fecha = iso.replace(/(\.\d{3})Z$/, '$1' + '000000Z');
+
+      // Create order node and set fecha as Neo4j datetime (not a string)
+      await session.run(
+        'CREATE (o:Orden {id: $id, canal: $canal, moneda: $moneda, total: $total}) SET o.fecha = datetime($fecha) RETURN o',
+        { id: orderId, canal, moneda, total, fecha }
+      );
 
       // Link cliente if provided
       if (cliente_id) {
@@ -127,9 +124,10 @@ module.exports = (driver) => {
     }
   });
 
-  // Editar orden
+  // Editar orden (fecha de creación no modificable)
   router.patch('/:id', async (req, res) => {
-    const { fecha, canal, moneda, total } = req.body;
+    // ignore any provided 'fecha' to avoid changing creation timestamp
+    const { canal, moneda, total } = req.body;
     const session = driver.session(dbOpts);
     try {
       // Use datetime($fecha) so the property is stored as a Neo4j datetime, not a string
@@ -137,7 +135,7 @@ module.exports = (driver) => {
       const items = req.body.items || []
       const result = await session.run(
         `MATCH (o:Orden {id: $id})
-         SET o.fecha = datetime($fecha), o.canal = $canal, o.moneda = $moneda, o.total = $total
+         SET o.canal = $canal, o.moneda = $moneda, o.total = $total
          WITH o
          OPTIONAL MATCH (o)-[r:CONTIENE]->()
          DELETE r
@@ -150,7 +148,7 @@ module.exports = (driver) => {
          WHERE p IS NOT NULL
          CREATE (o)-[:CONTIENE {cantidad: item.cantidad, precio_unit: item.precio_unit}]->(p)
          RETURN o`,
-        { id: req.params.id, fecha, canal, moneda, total, items }
+        { id: req.params.id, canal, moneda, total, items }
       );
       if (result.records.length === 0) {
         return res.status(404).json({ error: 'Orden no encontrada' });
