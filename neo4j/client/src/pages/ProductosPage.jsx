@@ -141,6 +141,7 @@ function ProductosPage() {
 
   const handleSave = async (productoData) => {
     try {
+      setError('')
       if (editingProducto) {
         await productosApi.update(editingProducto.id, productoData)
       } else {
@@ -152,12 +153,18 @@ function ProductosPage() {
       setShowForm(false)
       setEditingProducto(null)
     } catch (error) {
-      setError('Error al guardar producto')
       console.error(error)
+      if (error && error.response && error.response.status === 409) {
+        const serverMsg = error.response.data && error.response.data.error ? error.response.data.error : 'Algún código ya está en uso';
+        setError(serverMsg)
+      } else {
+        setError('Error al guardar producto')
+      }
     }
   }
 
   const handleEdit = (producto) => {
+    setError('')
     setEditingProducto(producto)
     setShowForm(true)
   }
@@ -219,7 +226,7 @@ function ProductosPage() {
               <button className="btn" onClick={() => { setSearchId(''); setSearchError(''); loadProductos(); }}>Mostrar todos</button>
               <button 
                 className="btn" 
-                onClick={() => { setCreatedProductId(null); setShowForm(true) }}
+                onClick={() => { setCreatedProductId(null); setShowForm(true); setError(''); setEditingProducto(null); }}
               >
                 <Plus size={20} style={{ marginRight: '0.5rem' }} />
                 Nuevo Producto
