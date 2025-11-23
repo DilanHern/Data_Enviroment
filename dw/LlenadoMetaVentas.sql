@@ -22,7 +22,7 @@ SELECT
         (5000 + (p.IdProducto * 500) + (c.IdCliente * 300)) * 
         (1 + (a.Anio - 2023) * 0.15) * 
         (1 + (m.Mes * 0.02)) * 
-        (1 + (ABS(CHECKSUM(NEWID())) % 100) * 0.001),
+        (1 + ((p.IdProducto * c.IdCliente * a.Anio * m.Mes) % 50) * 0.01),
         2
     ) AS MetaUSD
 FROM 
@@ -36,3 +36,5 @@ CROSS JOIN
      UNION SELECT 5 UNION SELECT 6 UNION SELECT 7 UNION SELECT 8 
      UNION SELECT 9 UNION SELECT 10 UNION SELECT 11 UNION SELECT 12) m;
 GO
+
+
