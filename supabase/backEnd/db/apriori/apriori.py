@@ -7,17 +7,11 @@ from mlxtend.frequent_patterns import apriori, association_rules
 from dotenv import load_dotenv
 from insertapriori import guardarReglas
 
-MIN_SUPPORT = 0.1    # soporte mínimo (40%)
+MIN_SUPPORT = 0.015  # soporte mínimo (40%)
 MIN_CONFIDENCE = 0.3  # confianza mínima (60%)
 
 
 def cargar_datos_desde_bd(database_url: str | None = None) -> tuple[pd.DataFrame, dict]:
-    """Cargar datos desde Supabase REST (usando las vars en .env.local).
-
-    En lugar de conectarse por SQLAlchemy aquí, usamos la API REST de Supabase
-    (como hace el ETL) para traer `orden` y `orden_detalle` y construir el
-    DataFrame transaction-item.
-    """
     # Prefer the project's `.env.local` next to `supabase/backEnd/.env.local`
     base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
     dotenv_path = os.path.join(base_dir, ".env.local")

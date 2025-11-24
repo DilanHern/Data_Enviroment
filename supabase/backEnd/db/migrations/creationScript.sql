@@ -66,7 +66,9 @@ create table association_rule (
   itemset_id uuid references itemset(itemset_id) on delete cascade,
   soporte numeric,
   confianza numeric,
-  lift numeric
+  lift numeric,
+  active boolean NOT NULL DEFAULT true,
+  deleted_at timestamp with time zone NULL
 );
 
 -- ===========================================
