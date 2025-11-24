@@ -14,27 +14,25 @@ GO
 
 INSERT INTO MetaVentas (IdProducto, IdCliente, Anio, Mes, MetaUSD)
 SELECT 
-    p.IdProducto,
-    c.IdCliente,
-    a.Anio,
-    m.Mes,
+    fv.IdProducto,
+    fv.IdCliente,
+    t.Anio,
+    t.Mes,
     ROUND(
-        (5000 + (p.IdProducto * 500) + (c.IdCliente * 300)) * 
-        (1 + (a.Anio - 2023) * 0.15) * 
-        (1 + (m.Mes * 0.02)) * 
-        (1 + ((p.IdProducto * c.IdCliente * a.Anio * m.Mes) % 50) * 0.01),
+        -- Meta = 80% del promedio de ventas reales de esa combinación cliente-producto-mes
+        -- Esto garantiza cumplimientos entre 80% y 120% aproximadamente
+        AVG(fv.TotalVentas) * 0.8 * 
+        -- Variabilidad: 0.9 a 1.1 para diversificar cumplimientos
+        (0.9 + ((fv.IdProducto * 7 + fv.IdCliente * 11 + t.Mes * 3) % 20) * 0.01),
         2
     ) AS MetaUSD
-FROM 
-    (SELECT TOP 5 IdProducto FROM DimProducto ORDER BY IdProducto) p
-CROSS JOIN 
-    (SELECT TOP 5 IdCliente FROM DimCliente ORDER BY IdCliente) c
-CROSS JOIN 
-    (SELECT 2023 AS Anio UNION SELECT 2024 UNION SELECT 2025) a
-CROSS JOIN 
-    (SELECT 1 AS Mes UNION SELECT 2 UNION SELECT 3 UNION SELECT 4 
-     UNION SELECT 5 UNION SELECT 6 UNION SELECT 7 UNION SELECT 8 
-     UNION SELECT 9 UNION SELECT 10 UNION SELECT 11 UNION SELECT 12) m;
+FROM FactVentas fv
+INNER JOIN DimTiempo t ON fv.IdTiempo = t.IdTiempo
+WHERE t.Anio IN (2023, 2024, 2025)
+    AND fv.IdProducto <= 50  -- Solo primeros 50 productos
+    AND fv.IdCliente <= 50   -- Solo primeros 50 clientes
+GROUP BY fv.IdProducto, fv.IdCliente, t.Anio, t.Mes
+HAVING AVG(fv.TotalVentas) > 0;  -- Solo donde hay ventas
 GO
 
 
