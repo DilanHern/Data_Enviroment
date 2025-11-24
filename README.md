@@ -281,18 +281,15 @@ Key scripts under `supabase/backEnd/db/apriori`:
 
 Using `mlxtend.frequent_patterns`:
 
-<<<<<<< HEAD
-- **Support ($support$)**
-	- $support(X) = \frac{\text{# transactions containing } X}{\text{# total transactions}}$.
-- **Confidence ($confidence$)**
-=======
-- **Soporte ($support$)**
-	- $support(X) = \frac{\text{transacciones que contienen X}}{\text{transacciones totales}}$
-- **Confianza ($confidence$)**
->>>>>>> 493f652826bb3d822495b952cef7073499cd6b0a
-	- $confidence(X \Rightarrow Y) = \frac{support(X \cup Y)}{support(X)}$.
-- **Lift**
-	- $lift(X \Rightarrow Y) = \frac{confidence(X \Rightarrow Y)}{support(Y)}$.
+- **Support ($support$)**  
+  - $support(X) = \frac{\text{\# transacciones que contienen X}}{\text{\# transacciones totales}}$.
+
+- **Confidence ($confidence$)**  
+  - $confidence(X \Rightarrow Y) = \frac{support(X \cup Y)}{support(X)}$.
+
+- **Lift**  
+  - $lift(X \Rightarrow Y) = \frac{confidence(X \Rightarrow Y)}{support(Y)}$.
+
 
 Configured parameters in `apriori.py`:
 
