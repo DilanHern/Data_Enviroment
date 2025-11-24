@@ -20,18 +20,28 @@ pip install requests pyodbc python-dotenv
 ```
 
 Para poblar de datos 
-```bash
+```bash MAC
 python3 bccr_exchange_rate.py populate
+```
+```bash WINDOWS
+python bccr_exchange_rate.py populate
 ```
 
 Para hacer el job, si no se pone nada en default está para las 5am, pero acepta un parámetro HH:MM para escoger (recuerden que es 24h!)
-```bash
+```bash MAC
 python3 bccr_exchange_rate.py scheduler 
+```
+```bash WINDOWS se debe de abrir una PowerShell elevada
+Start-Process powershell -Verb RunAs 
+python bccr_exchange_rate.py scheduler 
 ```
 
 Para ya botar el job después 
-```bash
+```bash MAC
 python3 bccr_exchange_rate.py remove-scheduler 
+```
+```bash WINDOWS
+python bccr_exchange_rate.py remove-scheduler 
 ```
 
 
@@ -49,6 +59,12 @@ Para prender el frontend
 cd mongoDB/frontend
 npm i
 npm run dev
+```
+
+Para el seeding:
+```bash
+cd mongoDB/backend
+npm run seed
 ```
 
 Para ejecutar el etl primero se deben instalar las dependencias, desde Mac hay que recordar primero activar el venv
