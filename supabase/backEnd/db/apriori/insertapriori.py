@@ -50,28 +50,80 @@ def insertaReglasSupabase(reglas, url, headers, itemset, itemset_item, associati
             grupos[r.get('rule_group')].append(r)
 
         # Construir índices a partir de los datos existentes
+        # Normalizar IDs a str para comparaciones seguras
         # itemset_items_map: itemset_id -> set(producto_id)
         itemset_items_map = defaultdict(set)
         for ii in itemset_item or []:
-            itemset_items_map[ii.get('itemset_id')].add(ii.get('producto_id'))
+            iid = ii.get('itemset_id')
+            pid = ii.get('producto_id')
+            if iid is None or pid is None:
+                continue
+            itemset_items_map[str(iid)].add(str(pid))
 
-        # association rules existentes por itemset
+        # association rules existentes por itemset (solo activas)
         assoc_by_itemset = defaultdict(list)
         for ar in association_rule or []:
+            # Si la columna 'active' existe y es False, ignorar (soft-deleted)
+            if 'active' in ar and not ar.get('active'):
+                continue
             assoc_by_itemset[ar.get('itemset_id')].append(ar)
 
-        # antecedentes_map: rule_id -> set(producto_id)
+        # antecedentes_map: rule_id -> set(producto_id) (todos como str)
         antecedentes_map = defaultdict(set)
         for a in antecedentes or []:
-            antecedentes_map[a.get('rule_id')].add(a.get('producto_id'))
+            rid = a.get('rule_id')
+            pid = a.get('producto_id')
+            if rid is None or pid is None:
+                continue
+            antecedentes_map[str(rid)].add(str(pid))
 
         consecuentes_map = defaultdict(set)
         for c in consecuentes or []:
-            consecuentes_map[c.get('rule_id')].add(c.get('producto_id'))
+            rid = c.get('rule_id')
+            pid = c.get('producto_id')
+            if rid is None or pid is None:
+                continue
+            consecuentes_map[str(rid)].add(str(pid))
 
         session = requests.Session()
         # nos aseguramos de pedir representación al insertar
         hdrs = {**headers, 'Prefer': 'return=representation'}
+
+        # --- Pre-clean: desactivar reglas existentes que NO aparecen en el nuevo conjunto ---
+        try:
+            # construir fingerprints de las reglas nuevas (antecedents, consequents)
+            new_fps = set()
+            for rows in grupos.values():
+                ants = {r.get('antecedent_id') for r in rows if r.get('antecedent_id')}
+                cons = {r.get('consequent_id') or r.get('consequent_id') for r in rows if r.get('consequent_id')}
+                new_fps.add((frozenset(ants), frozenset(cons)))
+
+            # Para cada regla activa existente, si su fingerprint NO está en new_fps -> desactivar
+            for ar in (association_rule or []):
+                # ignorar ya desactivadas
+                if 'active' in ar and not ar.get('active'):
+                    continue
+                rid = ar.get('rule_id')
+                existing_ants = antecedentes_map.get(rid, set())
+                existing_cons = consecuentes_map.get(rid, set())
+                fp = (frozenset(existing_ants), frozenset(existing_cons))
+                if fp not in new_fps:
+                    try:
+                        patch_url = f"{url}/rest/v1/association_rule?rule_id=eq.{rid}"
+                        # use timezone-aware UTC timestamp
+                        ts_utc = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace('+00:00', 'Z')
+                        patch_payload = {
+                            "active": False,
+                            "deleted_at": ts_utc
+                        }
+                        resp = session.patch(patch_url, json=patch_payload, headers=hdrs, timeout=30)
+                        resp.raise_for_status()
+                        print(f"Regla existente {rid} no presente en nuevo run -> marcada inactive (soft-delete)")
+                    except Exception as e:
+                        print(f"Advertencia: no se pudo desactivar regla existente {rid}: {e}", file=sys.stderr)
+        except Exception as e:
+            # si falla la limpieza previa, no abortamos el proceso; lo notificamos
+            print(f"Advertencia: fallo durante pre-clean de reglas existentes: {e}", file=sys.stderr)
 
         for group, rows in grupos.items():
             # Reconstruir conjuntos de antecedentes y consecuentes completos
@@ -113,27 +165,63 @@ def insertaReglasSupabase(reglas, url, headers, itemset, itemset_item, associati
                 # actualizar mapa local
                 itemset_items_map[found_itemset_id] = set(union_items)
 
-            # Verificar si ya existe una association_rule para este itemset con mismos antecedents/consequents
-            skip_insertion = False
+            # Verificar si ya existe una association_rule activa para este itemset con mismos antecedents/consequents
+            found_existing_rule = None
             for ar in assoc_by_itemset.get(found_itemset_id, []):
                 rid = ar.get('rule_id')
                 existing_ants = antecedentes_map.get(rid, set())
                 existing_cons = consecuentes_map.get(rid, set())
-                # comparar conjuntos directamente
                 if existing_ants == set(antecedents) and existing_cons == set(consequents):
-                    skip_insertion = True
+                    found_existing_rule = ar
                     break
 
-            if skip_insertion:
-                print(f"Regla existente encontrada para {group}, se omite inserción")
-                continue
+            if found_existing_rule:
+                # Si métricas iguales (tolerancia pequeña), saltar; sino, soft-delete la existente y crear nueva
+                try:
+                    existing_support = float(found_existing_rule.get('soporte') or 0)
+                    existing_conf = float(found_existing_rule.get('confianza') or 0)
+                    existing_lift = float(found_existing_rule.get('lift') or 0)
+                except Exception:
+                    existing_support = existing_conf = existing_lift = 0.0
 
-            # Insertar nueva association_rule
+                # valores nuevos
+                new_support = float(soporte or 0)
+                new_conf = float(confianza or 0)
+                new_lift = float(lift or 0)
+
+                eps = 1e-6
+                if (abs(existing_support - new_support) < eps and
+                        abs(existing_conf - new_conf) < eps and
+                        abs(existing_lift - new_lift) < eps):
+                    print(f"Regla idéntica activa encontrada para {group}, se omite inserción")
+                    continue
+
+                # soft-delete: marcar existing rule active = false
+                rid = found_existing_rule.get('rule_id')
+                try:
+                    patch_url = f"{url}/rest/v1/association_rule?rule_id=eq.{rid}"
+                    # use timezone-aware UTC timestamp
+                    ts_utc = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace('+00:00', 'Z')
+                    patch_payload = {
+                        "active": False,
+                        "deleted_at": ts_utc
+                    }
+                    # usar service role headers (hdrs) to allow update
+                    resp = session.patch(patch_url, json=patch_payload, headers=hdrs, timeout=30)
+                    resp.raise_for_status()
+                    print(f"Regla antigua {rid} desactivada (soft-delete) para insertar versión nueva")
+                except Exception as e:
+                    print(f"Advertencia: no se pudo desactivar regla antigua {rid}: {e}", file=sys.stderr)
+                # proceed to insert new rule
+
+            # Insertar nueva association_rule (si no hay regla activa idéntica ya lo evitamos arriba)
             ar_payload = [{
                 "itemset_id": found_itemset_id,
                 "soporte": soporte if soporte is not None else 0,
                 "confianza": confianza if confianza is not None else 0,
                 "lift": lift if lift is not None else 0,
+                "active": True,
+                "deleted_at": None
             }]
             resp = session.post(f"{url}/rest/v1/association_rule", json=ar_payload, headers=hdrs)
             resp.raise_for_status()

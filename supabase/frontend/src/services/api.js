@@ -187,9 +187,11 @@ export const recommendationsApi = {
 		if (matchedRuleIds.length === 0) return { data: [] }
 
 		// 3) obtener las reglas y sus consecuentes únicamente para las reglas que coinciden totalmente
+		// Only use rules that are active (not soft-deleted)
 		const { data: rules, error: errRules } = await supabase
 			.from('association_rule')
 			.select('rule_id, soporte, confianza, lift')
+			.eq('active', true)
 			.in('rule_id', matchedRuleIds)
 		if (errRules) throw errRules
 
