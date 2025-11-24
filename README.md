@@ -282,7 +282,7 @@ Key scripts under `supabase/backEnd/db/apriori`:
 Using `mlxtend.frequent_patterns`:
 
 - **Support ($support$)**  
-  - $support(X) = \frac{\text{\# transacciones que contienen X}}{\text{\# transacciones totales}}$.
+  - $support(X) = \frac{\text{transacciones que contienen X}}{\text{transacciones totales}}$
 
 - **Confidence ($confidence$)**  
   - $confidence(X \Rightarrow Y) = \frac{support(X \cup Y)}{support(X)}$.
