@@ -10,20 +10,43 @@ const Producto = require('../src/models/producto');
 const Orden = require('../src/models/orden');
 
 // para generar sku del codigo mongo, si no lo tenemos
-function generateSkuFromMongoCode(codigoMongo) {
+function generateSkuFromMongoCode(codigoMongo, skusExistentes = new Set()) {
   if (!codigoMongo) return null;
   
   if (codigoMongo.startsWith('MN-')) {
     // es igual pero con el numero al reves
     const numero = codigoMongo.substring(3);
-    const numeroInvertido = numero.split('').reverse().join('');
-    return `SKU-${numeroInvertido}`;
+    let numeroInvertido = numero.split('').reverse().join('');
+    let sku = `SKU-${numeroInvertido}`;
+    
+    // si ya existe, sumamos 1 hasta encontrar uno nuevo
+    let contador = 0;
+    const skuBase = sku;
+    while (skusExistentes.has(sku)) {
+      contador++;
+      const numeroModificado = (parseInt(numeroInvertido) + contador).toString().padStart(4, '0');
+      sku = `SKU-${numeroModificado}`;
+    }
+    
+    skusExistentes.add(sku);
+    return sku;
   } else {
-
+    // lo mismo pero para códigos que no siguen el formato MN-XXXX
     const numeroLimpio = codigoMongo.replace(/\D/g, '');
     if (numeroLimpio) {
-      const numeroInvertido = numeroLimpio.split('').reverse().join('');
-      return `SKU-${numeroInvertido.padStart(4, '0')}`;
+      let numeroInvertido = numeroLimpio.split('').reverse().join('');
+      let sku = `SKU-${numeroInvertido.padStart(4, '0')}`;
+
+      
+      let contador = 0;
+      while (skusExistentes.has(sku)) {
+        contador++;
+        const numeroModificado = (parseInt(numeroInvertido, 10) + contador).toString().padStart(4, '0');
+        sku = `SKU-${numeroModificado}`;
+      }
+      
+      skusExistentes.add(sku);
+      return sku;
     }
     return `SKU-0000`;
   }
@@ -78,6 +101,7 @@ function generarClientes(cantidad) {
 
 function generarProductos() {
   const productos = [];
+  const skusExistentes = new Set(); 
   
  
   equivalencias.forEach((item, index) => {
@@ -85,6 +109,8 @@ function generarProductos() {
       sku: item.SKU  
     };
     
+   
+    skusExistentes.add(item.SKU);
     
     if (item.CodigoAlt) {
       equivalenciasObj.codigo_alt = item.CodigoAlt;
@@ -98,45 +124,55 @@ function generarProductos() {
     });
   });
   
-  // Productos adicionales para llegar a 250, ademas de los comunes
-  const productosAdicionales = [
-    'Café Premium', 'Chocolate Orgánico', 'Té Verde', 'Miel Natural', 'Azúcar Morena',
-    'Vinagre Balsámico', 'Sal Marina', 'Pimienta Negra', 'Canela Molida', 'Vainilla Extract',
-    'Harina Integral', 'Avena Natural', 'Quinoa Orgánica', 'Chía Seeds', 'Almendras Tostadas',
-    'Nueces Mixtas', 'Yogurt Griego', 'Queso Artesanal', 'Mantequilla Cremosa', 'Huevos Orgánicos',
-    'Pollo Fresco', 'Pescado del Día', 'Carne Premium', 'Jamón Serrano', 'Chorizo Español',
-    'Pasta Italiana', 'Salsa Tomate', 'Aceitunas Verdes', 'Aceitunas Negras', 'Pesto Basilico',
-    'Pan Baguette', 'Croissant Francés', 'Galletas Avena', 'Cereal Integral', 'Granola Casera',
-    'Jugo Naranja', 'Agua Mineral', 'Refresco Natural', 'Vino Tinto', 'Cerveza Artesanal',
-    'Detergente Eco', 'Jabón Líquido', 'Champú Natural', 'Acondicionador', 'Crema Corporal',
-    'Cepillo Dientes', 'Pasta Dental', 'Enjuague Bucal', 'Papel Higiénico', 'Toallas Papel',
-    'Cuaderno Escolar', 'Bolígrafos Color', 'Lápices HB', 'Goma Borrar', 'Regla Metálica',
-    'Calculadora', 'Folder Archivos', 'Clips Oficina', 'Grapadora', 'Perforadora',
-    'Smartphone Pro', 'Tablet Android', 'Laptop Gaming', 'Mouse Inalámbrico', 'Teclado RGB',
-    'Monitor 4K', 'Webcam HD', 'Auriculares Bluetooth', 'Parlante Portátil', 'Cargador USB-C',
-    'Sartén Antiadherente', 'Olla Presión', 'Batidora Manual', 'Licuadora Pro', 'Microondas Smart'
-  ];
-  
-  const categoriasAdicionales = [
-    'Alimentación', 'Bebidas', 'Limpieza', 'Cuidado Personal', 'Oficina', 
-    'Electrónica', 'Hogar', 'Cocina', 'Panadería', 'Lácteos'
-  ];
-  
+ 
+  const productosPorCategoria = {
+    alimentos: [
+      'Café Premium', 'Chocolate Orgánico', 'Miel Natural', 'Azúcar Morena', 'Vinagre Balsámico', 
+      'Sal Marina', 'Pimienta Negra', 'Canela Molida', 'Harina Integral', 'Avena Natural', 
+      'Quinoa Orgánica', 'Almendras Tostadas', 'Nueces Mixtas', 'Yogurt Griego', 'Queso Artesanal', 
+      'Mantequilla Cremosa', 'Huevos Orgánicos', 'Pollo Fresco', 'Pescado del Día', 'Carne Premium', 
+      'Jamón Serrano', 'Chorizo Español', 'Pasta Italiana', 'Pan Baguette', 'Croissant Francés', 
+      'Galletas Avena', 'Cereal Integral', 'Granola Casera'
+    ],
+    bebidas: [
+      'Té Verde', 'Jugo Naranja', 'Agua Mineral', 'Refresco Natural', 'Vino Tinto', 'Cerveza Artesanal',
+      'Smoothie Frutal', 'Café Helado', 'Limonada Natural', 'Kombucha'
+    ],
+    limpieza: [
+      'Detergente Eco', 'Jabón Líquido', 'Bolsas de Basura', 'Papel Higiénico', 'Toallas Papel',
+      'Limpiapisos', 'Desinfectante', 'Esponjas', 'Guantes de Limpieza'
+    ],
+    higiene: [
+      'Champú Natural', 'Acondicionador', 'Crema Corporal', 'Cepillo Dientes', 'Pasta Dental', 'Enjuague Bucal',
+      'Desodorante', 'Protector Solar', 'Jabón Antibacterial', 'Mascarilla Facial'
+    ],
+    electronicos: [
+      'Smartphone Pro', 'Tablet Android', 'Laptop Gaming', 'Mouse Inalámbrico', 'Teclado RGB',
+      'Monitor 4K', 'Webcam HD', 'Auriculares Bluetooth', 'Parlante Portátil', 'Cargador USB-C',
+      'Cable HDMI', 'Memoria USB', 'Adaptador', 'Power Bank'
+    ]
+  };
+
+  const categorias = Object.keys(productosPorCategoria);
+
   for (let i = equivalencias.length; i < 250; i++) {
-    const nombre = productosAdicionales[Math.floor(Math.random() * productosAdicionales.length)];
-    const categoria = categoriasAdicionales[Math.floor(Math.random() * categoriasAdicionales.length)];
-    const codigoMongo = `MN-${String(i + 1).padStart(4, '0')}`;
     
-    const equivalencias = {};
+    const categoria = categorias[Math.floor(Math.random() * categorias.length)];
+    const productosDeCategoria = productosPorCategoria[categoria];
+    
+    
+    const nombre = productosDeCategoria[Math.floor(Math.random() * productosDeCategoria.length)];
+    const codigoMongo = `MN-${String(i + 1).padStart(4, '0')}`;
+
+    const equivalenciasProducto = {};
     // Solo 60% de los productos adicionales tienen equivalencias
     if (Math.random() > 0.4) {
-      // Usar función determinística para generar SKU
-      equivalencias.sku = generateSkuFromMongoCode(codigoMongo);
+      equivalenciasProducto.sku = generateSkuFromMongoCode(codigoMongo, skusExistentes);
       
       if (Math.random() > 0.6) {
-        // Para código alt también usar algo más determinístico
-        const altHash = crypto.createHash('md5').update(codigoMongo + 'ALT').digest('hex').substring(0, 6).toUpperCase();
-        equivalencias.codigo_alt = `ALT-${altHash}`;
+        // sigue la lógica del sku
+        const numero = codigoMongo.substring(3);
+        equivalenciasProducto.codigo_alt = `ALT-${numero}`;
       }
     }
     
@@ -144,7 +180,7 @@ function generarProductos() {
       codigo_mongo: codigoMongo,
       nombre: `${nombre} ${i}`,
       categoria: categoria,
-      equivalencias: Object.keys(equivalencias).length > 0 ? equivalencias : undefined
+      equivalencias: Object.keys(equivalenciasProducto).length > 0 ? equivalenciasProducto : undefined
     });
   }
   
@@ -178,7 +214,7 @@ function generarFechaAleatoria(año) {
   
   
   if (fechaGenerada >= hoy) {
-    return new Date(hoy.getTime() - 24 * 60 * 60 * 1000); // Ayer
+    return new Date(hoy.getTime() - 24 * 60 * 60 * 1000); // ayer
   }
   
   return fechaGenerada;

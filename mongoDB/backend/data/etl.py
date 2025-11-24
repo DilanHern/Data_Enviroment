@@ -31,6 +31,9 @@ class MongoToDW_ETL:
 
     
         self.log_file_path = os.path.join(os.path.dirname(__file__), 'etl_execution.log')
+        
+        
+        self.skus_generados = set()
 
         self.genero_mapping = {
             'Masculino': 'M',
@@ -47,15 +50,35 @@ class MongoToDW_ETL:
         # agarramos y ponemos los números al revés
         if codigo_mongo.startswith('MN-'):
             numero = codigo_mongo[3:]  
-   
-            numero_invertido = numero[::-1] 
-            return f'SKU-{numero_invertido}'
-        else:
+            numero_invertido = numero[::-1]
+            sku = f'SKU-{numero_invertido}'
             
+            # si ya existe, sumamos 1 hasta encontrar uno nuevo
+            contador = 0
+            sku_original = sku
+            while sku in self.skus_generados:
+                contador += 1
+                numero_modificado = str(int(numero_invertido) + contador).zfill(4)
+                sku = f'SKU-{numero_modificado}'
+            
+            self.skus_generados.add(sku)
+            return sku
+        else:
+            # lo mismo pero para códigos que no siguen el formato MN-XXXX
             numero_limpio = ''.join(filter(str.isdigit, codigo_mongo))  
             if numero_limpio:
                 numero_invertido = numero_limpio[::-1]
-                return f'SKU-{numero_invertido.zfill(4)}' 
+                sku = f'SKU-{numero_invertido.zfill(4)}'
+                
+                s
+                contador = 0
+                while sku in self.skus_generados:
+                    contador += 1
+                    numero_modificado = str(int(numero_invertido) + contador).zfill(4)
+                    sku = f'SKU-{numero_modificado}'
+                
+                self.skus_generados.add(sku)
+                return sku
             return 'SKU-0000'
         
     def ultima_ejecucion(self):
@@ -175,10 +198,14 @@ class MongoToDW_ETL:
         try:
             cursor = self.sql_connection.cursor()
             
-            codigo_mongo = producto_data['codigo_mongo']
-            nombre = producto_data['nombre']
-            categoria = producto_data['categoria']
+            codigo_mongo = producto_data.get('codigo_mongo')
+            nombre = producto_data.get('nombre', 'Sin Nombre')
+            categoria = producto_data.get('categoria', 'Sin Categoria')
             equivalencias = producto_data.get('equivalencias', {})
+            
+            
+            if not codigo_mongo:
+                return None
             
             sku_from_equivalencias = equivalencias.get('sku')
             codigo_alt = equivalencias.get('codigo_alt')
@@ -269,7 +296,7 @@ class MongoToDW_ETL:
             return int(producto_id)
             
         except Exception as e:
-            print(f"Error procesando producto/equivalencias: {e}")
+            print(f"Error procesando producto: {e}")
             return None
     
     def check_field_exists(self, table, field, id_value):
@@ -518,7 +545,10 @@ class MongoToDW_ETL:
             self.connect_mongo()
             self.connect_sql_server()
             
-          
+            
+            self.cargar_skus_existentes()
+            
+            
             processed_count, ultima_fecha_procesada = self.procesar_ordenes(limit)
             
             if processed_count > 0:
@@ -539,8 +569,32 @@ class MongoToDW_ETL:
             if self.sql_connection:
                 self.sql_connection.close()
                 print("Conexión SQL Server cerrada")
-
+    
+ 
+    def cargar_skus_existentes(self):
+        
+        try:
+            cursor = self.sql_connection.cursor()
+            cursor.execute("SELECT SKU FROM DimProducto")
+            skus_existentes = cursor.fetchall()
+            
+            for sku_row in skus_existentes:
+                if sku_row[0]:
+                    self.skus_generados.add(sku_row[0])
+            
+            
+            cursor.execute("SELECT SKU FROM Equivalencias WHERE SKU IS NOT NULL")
+            skus_equivalencias = cursor.fetchall()
+            
+            for sku_row in skus_equivalencias:
+                if sku_row[0]:
+                    self.skus_generados.add(sku_row[0])
+            
+            
+        except Exception as e:
+            print(f"Error cargando SKUs existentes: {e}")
 
 if __name__ == "__main__":
     etl = MongoToDW_ETL()
+    
     etl.run_etl()

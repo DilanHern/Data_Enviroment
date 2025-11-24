@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Fragment } from 'react'
 import { ordenesApi, clientesApi, productosApi } from '../services/api'
 import { Edit, Trash2, Plus, Minus } from 'lucide-react'
 
@@ -284,6 +284,7 @@ function OrdenesPage() {
   const [createdOrderId, setCreatedOrderId] = useState(null)
   const [searchId, setSearchId] = useState('')
   const [searchError, setSearchError] = useState('')
+  const [expandedOrderId, setExpandedOrderId] = useState(null)
 
   useEffect(() => {
     loadOrdenes()
@@ -363,6 +364,10 @@ function OrdenesPage() {
     setShowForm(true)
   }
 
+  const handleToggleDetails = (id) => {
+    setExpandedOrderId(prev => (prev === id ? null : id))
+  }
+
   const handleDelete = async (id) => {
     if (window.confirm('¿Estás seguro de eliminar esta orden?')) {
       try {
@@ -432,7 +437,8 @@ function OrdenesPage() {
             </thead>
             <tbody>
               {ordenes.map(orden => (
-                <tr key={orden.id || orden._id}>
+                <Fragment key={orden.id || orden._id}>
+                <tr>
                   <td>{orden.id || orden._id || '-'}</td>
                   <td>{orden.canal || '-'}</td>
                   <td>{orden.moneda || '-'}</td>
@@ -450,6 +456,13 @@ function OrdenesPage() {
                     >
                       <Edit size={16} />
                     </button>
+                    <button
+                      className="btn btn-info"
+                      onClick={() => handleToggleDetails(orden.id || orden._id)}
+                      style={{ marginRight: '0.5rem' }}
+                    >
+                      Detalles
+                    </button>
                     <button 
                       className="btn btn-danger" 
                       onClick={() => handleDelete(orden.id || orden._id)}
@@ -458,6 +471,57 @@ function OrdenesPage() {
                     </button>
                   </td>
                 </tr>
+                {expandedOrderId === (orden.id || orden._id) && (
+                  <tr>
+                    <td colSpan={6}>
+                      <div style={{ padding: '1rem', background: '#f7f7f9' }}>
+                        <h4>Detalles de la orden</h4>
+                        <p><strong>ID:</strong> {orden.id || orden._id}</p>
+                        <p><strong>Canal:</strong> {orden.canal || '-' } &nbsp; <strong>Moneda:</strong> {orden.moneda || '-'} &nbsp; <strong>Total:</strong> {orden.total != null ? `₡${orden.total.toLocaleString()}` : '-'}</p>
+                        <p><strong>Fecha:</strong> {orden.fecha ? (
+                          orden.fecha.year ? `${orden.fecha.year.low}-${String(orden.fecha.month.low).padStart(2,'0')}-${String(orden.fecha.day.low).padStart(2,'0')} ${String(orden.fecha.hour.low).padStart(2,'0')}:${String(orden.fecha.minute.low).padStart(2,'0')}`
+                          : String(orden.fecha)
+                        ) : '-'}</p>
+
+                        <h5>Cliente</h5>
+                        <p>{orden.cliente ? `${orden.cliente.nombre || ''} ${orden.cliente.email ? `- ${orden.cliente.email}` : ''}` : getClienteNombre(orden.cliente_id || orden.cliente && orden.cliente.id)}</p>
+
+                        <h5>Items</h5>
+                        <table className="table" style={{ marginBottom: '0.5rem' }}>
+                          <thead>
+                            <tr>
+                              <th>Producto</th>
+                              <th>Cantidad</th>
+                              <th>Precio Unitario</th>
+                              <th>Subtotal</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {(Array.isArray(orden.items) && orden.items.length > 0 ? orden.items : (Array.isArray(orden.productos) ? orden.productos : [])).map((it, idx) => {
+                              // Normalize fields
+                              const nombre = it.nombre || it.name || it.producto_nombre || it.producto || it.codigo_mongo || (it.producto_id || it.id) || ''
+                              const cantidad = typeof it.cantidad === 'object' && it.cantidad?.low !== undefined ? it.cantidad.low : (it.cantidad ?? it.qty ?? 0)
+                              const precio = it.precio_unit ?? it.precio ?? it.price ?? 0
+                              const subtotal = (Number(cantidad) || 0) * (Number(precio) || 0)
+                              return (
+                                <tr key={idx}>
+                                  <td>{nombre}</td>
+                                  <td>{cantidad}</td>
+                                  <td>{`₡${Number(precio).toLocaleString()}`}</td>
+                                  <td>{`₡${subtotal.toLocaleString()}`}</td>
+                                </tr>
+                              )
+                            })}
+                          </tbody>
+                        </table>
+
+                        <h5>Metadatos</h5>
+                        <pre style={{ whiteSpace: 'pre-wrap', background: '#fff', padding: '0.5rem', borderRadius: '4px' }}>{JSON.stringify(orden.metadatos || orden.meta || {}, null, 2)}</pre>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+                </Fragment>
               ))}
             </tbody>
           </table>
