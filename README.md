@@ -6,440 +6,443 @@
 
 # Data_Enviroment
 
-Plataforma de analítica de ventas end‑to‑end que integra múltiples bases de datos transaccionales (Supabase/PostgreSQL, SQL Server, MySQL, MongoDB, Neo4j) con un Data Warehouse corporativo, procesos ETL en Python y modelos de Apriori para generar reglas de asociación consumidas por aplicaciones web y dashboards en Power BI.
+End‑to‑end sales analytics platform that integrates multiple transactional databases (Supabase/PostgreSQL, SQL Server, MySQL, MongoDB, Neo4j) with a corporate Data Warehouse, Python‑based ETL processes, and Apriori models to generate association rules consumed by web applications and Power BI dashboards.
 
-El objetivo del proyecto es demostrar un flujo completo de ingeniería de datos y analítica avanzada, desde la captura transaccional hasta la explotación de datos por usuarios de negocio.
+The goal of this project is to demonstrate a complete data engineering and advanced analytics flow, from transactional capture to business user consumption.
 
 ---
 
-## 1. Arquitectura General
+## 1. Overall Architecture
 
-### Visión de alto nivel
+### High‑Level View
 
-La solución implementa una arquitectura de análisis de ventas multi‑fuente con los siguientes componentes principales:
+The solution implements a multi‑source sales analytics architecture with the following main components:
 
-- **Fuentes OLTP**
-	- **Supabase/PostgreSQL**: base principal de ventas para el caso Apriori.
-	- **SQL Server (`ventas_ms`)**: base de ventas transaccional clásica.
-	- **MySQL (`sales_mysql`)**: base alternativa para escenarios de integración.
-	- **MongoDB**: backend Node.js + colección de ventas.
-	- **Neo4j**: grafo de ventas y relaciones cliente‑producto.
+- **OLTP Sources**
+	- **Supabase/PostgreSQL**: main sales database used for the Apriori case.
+	- **SQL Server (`ventas_ms`)**: traditional transactional sales database.
+	- **MySQL (`sales_mysql`)**: alternative database for integration scenarios.
+	- **MongoDB**: Node.js backend + sales collections.
+	- **Neo4j**: graph database for customer–product relationships.
 
 - **Data Warehouse (`DW_VENTAS`, SQL Server)**
-	- Modelo dimensional en estrella con una tabla de hechos de ventas y dimensiones de Tiempo, Cliente, Producto y Canal.
-	- Tabla de metas de ventas (`MetaVentas`) vinculada a `DimCliente` y `DimProducto`.
+	- Star schema with a sales fact table and Time, Customer, Product, and Channel dimensions.
+	- Sales target table (`MetaVentas`) linked to `DimCliente` and `DimProducto`.
 
-- **Procesos ETL / Integración** (Python)
-	- ETLs específicos desde SQL Server, MySQL, MongoDB y Neo4j hacia el DW.
-	- Job de tipo de cambio BCCR para enriquecer la dimensión Tiempo con tipo de cambio diario.
+- **ETL / Integration Layer** (Python)
+	- Dedicated ETLs from SQL Server, MySQL, MongoDB, and Neo4j into the DW.
+	- BCCR (Central Bank) FX job enriching the Time dimension with daily exchange rate.
 
-- **Capa de Ciencia de Datos**
-	- Implementación de Apriori con `mlxtend` sobre datos transaccionales en Supabase.
-	- Cálculo de reglas de asociación y persistencia en tablas especializadas en PostgreSQL.
+- **Data Science Layer**
+	- Apriori implementation using `mlxtend` on transactional data in Supabase.
+	- Association rule computation and persistence into dedicated PostgreSQL tables.
 
-- **Capa de Presentación (Frontends)**
-	- **`supabase/frontend`**: React + Vite, conectado a Supabase, muestra clientes, productos, órdenes y recomendaciones basadas en reglas de asociación.
-	- **`mongoDB/frontend`**: React + Vite (según `package.json`) para explorar datos traídos desde MongoDB.
-	- **`neo4j/client`**: React + Vite para consumir el backend Neo4j.
+- **Presentation Layer (Frontends)**
+	- **`supabase/frontend`**: React + Vite, connected to Supabase, displays customers, products, orders, and association‑rule‑based recommendations.
+	- **`mongoDB/frontend`**: React + Vite (as per `package.json`) to explore data sourced from MongoDB.
+	- **`neo4j/client`**: React + Vite consuming the Neo4j backend.
 
 - **APIs / Backends**
-	- **Supabase**: expone REST/SQL sobre PostgreSQL (gestionado por Supabase).
-	- **`mongoDB/backend`**: Node.js/Express, API REST para clientes, productos, órdenes (ver `src/routes/*Route.js`).
-	- **`neo4j/server`**: Node.js/Express, API para consultar el grafo de ventas.
+	- **Supabase**: exposes REST/SQL on top of PostgreSQL (managed by Supabase).
+	- **`mongoDB/backend`**: Node.js/Express REST API for customers, products, and orders (see `src/routes/*Route.js`).
+	- **`neo4j/server`**: Node.js/Express API exposing the sales graph.
 
-- **Dashboards BI**
-	- Power BI sobre el DW `DW_VENTAS` para análisis de ventas, cumplimiento de metas y recomendaciones.
+- **BI Dashboards**
+	- Power BI connected to `DW_VENTAS` for sales analysis, target tracking, and recommendation insights.
 
-La interacción se resume así:
+**Interaction flow:**
 
-1. Sistemas OLTP generan y almacenan transacciones de ventas.
-2. Procesos ETL extraen, transforman y cargan datos hacia el DW (`DW_VENTAS`).
-3. Scripts de Apriori leen ventas de Supabase, calculan reglas y las guardan en tablas propias.
-4. Frontends consultan Supabase y/o APIs para mostrar datos operativos y recomendaciones.
-5. Power BI se conecta al DW para análisis histórico y métricas de negocio.
+1. OLTP systems generate and store sales transactions.
+2. ETL processes extract, transform, and load data into the DW (`DW_VENTAS`).
+3. Apriori scripts read sales from Supabase, compute rules, and persist them into dedicated tables.
+4. Frontends query Supabase and/or APIs to display operational data and recommendations.
+5. Power BI connects to the DW for historical analysis and business metrics.
 
 ---
 
-## 2. Bases de Datos Transaccionales (OLTP)
+## 2. Transactional Databases (OLTP)
 
 ### 2.1 Supabase / PostgreSQL
 
-Script principal: `supabase/backEnd/db/migrations/creationScript.sql`.
+Main DDL script: `supabase/backEnd/db/migrations/creationScript.sql`.
 
-**Tablas núcleo:**
+**Core Tables:**
 
 - `cliente`  
 	- `cliente_id` (UUID, PK, `uuid_generate_v4()`), `nombre`, `email` (UNIQUE), `genero` (`M`/`F`), `pais`, `fecha_registro`.
 - `producto`  
-	- `producto_id` (UUID, PK), `sku` (UNIQUE, opcional), `nombre`, `categoria`.
+	- `producto_id` (UUID, PK), `sku` (UNIQUE, optional), `nombre`, `categoria`.
 - `orden`  
-	- `orden_id` (UUID, PK), FK a `cliente`, `fecha` (`TIMESTAMPTZ`), `canal` (`WEB`/`APP`/`PARTNER`), `moneda` (`USD`/`CRC`), `total`.
+	- `orden_id` (UUID, PK), FK to `cliente`, `fecha` (`TIMESTAMPTZ`), `canal` (`WEB`/`APP`/`PARTNER`), `moneda` (`USD`/`CRC`), `total`.
 - `orden_detalle`  
-	- `orden_detalle_id` (UUID, PK), FKs a `orden` y `producto`, `cantidad`, `precio_unit`.
+	- `orden_detalle_id` (UUID, PK), FKs to `orden` and `producto`, `cantidad`, `precio_unit`.
 
-**Integridad y performance:**
+**Integrity & Performance:**
 
-- Foreign keys entre `orden` → `cliente` y `orden_detalle` → (`orden`, `producto`).
-- Índices para consultas analíticas y Apriori:
+- Foreign keys:
+	- `orden.cliente_id → cliente.cliente_id`
+	- `orden_detalle.orden_id → orden.orden_id`
+	- `orden_detalle.producto_id → producto.producto_id`
+- Indexes for analytics and Apriori:
 	- `CREATE INDEX ix_orden_fecha ON orden(fecha);`
 	- `CREATE INDEX ix_detalle_producto ON orden_detalle(producto_id);`
 
-**Tablas Apriori en PostgreSQL:**
+**Apriori Tables in PostgreSQL:**
 
-- `itemset` (itemsets frecuentes)
+- `itemset` (frequent itemsets)
 	- `itemset_id` (UUID, PK), `soporte` (NUMERIC), `tamano` (INT).
-- `itemset_item` (detalle de productos por itemset)
-	- PK compuesta (`itemset_id`, `producto_id`).
-- `association_rule` (regla de asociación)
-	- `rule_id` (UUID, PK), FK a `itemset`, `soporte`, `confianza`, `lift`, `active` (soft delete), `deleted_at`.
+- `itemset_item` (products per itemset)
+	- Composite PK (`itemset_id`, `producto_id`).
+- `association_rule` (association rules)
+	- `rule_id` (UUID, PK), FK to `itemset`, `soporte`, `confianza`, `lift`, `active` (soft delete), `deleted_at`.
 - `rule_antecedente` / `rule_consecuente`
-	- Relaciones N‑a‑N entre reglas y productos para antecedente y consecuente.
+	- Many‑to‑many relationships between rules and products for antecedent and consequent sides.
 
 ### 2.2 SQL Server – `ventas_ms`
 
-Scripts y utilidades en `sql server/`:
+Scripts and utilities under `sql server/`:
 
-- `ScriptCreación.sql`: define tablas transaccionales `Cliente`, `Producto`, `Orden`, `OrdenDetalle` (no mostrado aquí pero análogo al modelo Supabase).
-- `populate_db.py`: genera datos sintéticos (Faker) y puebla ~420 registros por tabla.
+- `ScriptCreación.sql`: defines transactional tables `Cliente`, `Producto`, `Orden`, `OrdenDetalle` (conceptually aligned with the Supabase model).
+- `populate_db.py`: generates synthetic data (Faker), ~420 records per table.
 
-**Uso típico:**
+**Typical usage:**
 
-- Integridad referencial con FKs entre cliente, producto, orden y detalle.
-- Constraints de negocio (p.ej. cantidades negativas no permitidas, emails únicos, etc.).
+- Referential integrity enforced via FKs between customer, product, order, and order detail.
+- Business constraints (e.g., positive quantities only, unique emails).
 
 ### 2.3 MySQL – `sales_mysql`
 
-Contenido en `mysql/`:
+Content under `mysql/`:
 
-- `ScriptCreaciónMySQL.sql`: define tablas equivalentes a `Cliente`, `Producto`, `Orden`, `OrdenDetalle`.
-- `populate_mysql.py`: inserta datos de prueba en MySQL.
+- `ScriptCreaciónMySQL.sql`: defines tables equivalent to `Cliente`, `Producto`, `Orden`, `OrdenDetalle`.
+- `populate_mysql.py`: populates MySQL with test data.
 
 ### 2.4 MongoDB
 
-Backend en `mongoDB/backend` (Node.js/Express) y frontend en `mongoDB/frontend`.
+Backend under `mongoDB/backend` (Node.js/Express) with frontend in `mongoDB/frontend`.
 
-- Modelos en `mongoDB/backend/src/models/*.js` para `cliente`, `producto` y `orden`.
-- Rutas REST en `mongoDB/backend/src/routes/*Route.js`.
-- ETL Python `mongoDB/backend/data/etl.py` para extraer información de MongoDB y enviar al DW.
+- Models in `mongoDB/backend/src/models/*.js` for `cliente`, `producto`, and `orden`.
+- REST routes in `mongoDB/backend/src/routes/*Route.js`.
+- Python ETL `mongoDB/backend/data/etl.py` to extract data from MongoDB and send it to the DW.
 
 ### 2.5 Neo4j
 
-Carpeta `neo4j/`:
+Folder `neo4j/`:
 
-- `llenado.cypher`: crea nodos de clientes, productos, órdenes y relaciones (por ejemplo `COMPRO`, `PERTENECE_A`), con constraints únicos sobre SKUs, IDs y correos.
-- BD principal: `ventas`.
+- `llenado.cypher`: creates customer, product, and order nodes and relationships (e.g. `COMPRO`, `PERTENECE_A`), with unique constraints on SKUs, IDs, and emails.
+- Main database: `ventas`.
 
-Esta base orientada a grafos se usa para análisis relacional avanzado y como fuente adicional hacia el DW.
+This graph‑oriented database is used for advanced relational analysis and as an additional source to the DW.
 
 ---
 
 ## 3. Data Warehouse (DW_VENTAS)
 
-Script: `dw/ScriptCreaciónDW.sql`.
+DDL script: `dw/ScriptCreaciónDW.sql`.
 
-### 3.1 Modelo Dimensional (Esquema en Estrella)
+### 3.1 Dimensional Model (Star Schema)
 
-- **Dimensiones:**
+- **Dimensions:**
 	- `DimTiempo` (`IdTiempo` INT IDENTITY, `Anio`, `Mes`, `Dia`, `Fecha`, `Semana`, `DiaSemana`, `TipoCambio`).
 	- `DimCliente` (`IdCliente` INT IDENTITY, `Nombre`, `Email`, `Genero`, `Pais`, `FechaCreacion`).
 	- `DimProducto` (`IdProducto` INT IDENTITY, `SKU`, `Nombre`, `Categoria`).
 	- `DimCanal` (`IdCanal` INT IDENTITY, `Nombre`).
 
-- **Tabla de Hechos:**
-	- `FactVentas` (`IdFactVentas` INT IDENTITY PK) con FKs a `DimTiempo`, `DimProducto`, `DimCliente`, `DimCanal`.
-	- Métricas: `TotalVentas`, `Cantidad`, `Precio`.
+- **Fact Table:**
+	- `FactVentas` (`IdFactVentas` INT IDENTITY PK) with FKs to `DimTiempo`, `DimProducto`, `DimCliente`, `DimCanal`.
+	- Measures: `TotalVentas`, `Cantidad`, `Precio`.
 
-- **Metas:**
-	- `MetaVentas` con FKs a `DimProducto` y `DimCliente` y columnas `Anio`, `Mes`, `MetaUSD`.
+- **Targets:**
+	- `MetaVentas` with FKs to `DimProducto` and `DimCliente` and columns `Anio`, `Mes`, `MetaUSD`.
 
-- **Equivalencias de SKUs:**
-	- `Equivalencias` para mapear `SKU`, `CodigoMongo`, `CodigoAlt` entre orígenes heterogéneos.
+- **SKU Equivalences:**
+	- `Equivalencias` mapping `SKU`, `CodigoMongo`, `CodigoAlt` across heterogeneous sources.
 
-### 3.2 Claves Sustitutas y Tiempo
+### 3.2 Surrogate Keys and Time
 
-- Todas las dimensiones usan claves sustitutas `INT IDENTITY` para desacoplar el DW de los IDs de origen.
-- `DimTiempo` almacena un registro por fecha y contiene `TipoCambio` diario.
-- Job `dw/job/bccr_exchange_rate.py` llena `DimTiempo.TipoCambio` consultando el BCCR para ~3 años de historia.
+- All dimensions use surrogate keys (`INT IDENTITY`) to decouple the DW from source IDs.
+- `DimTiempo` stores one row per date and includes `TipoCambio` (FX) per day.
+- Job `dw/job/bccr_exchange_rate.py` populates `DimTiempo.TipoCambio` using BCCR FX for ~3 years of history.
 
-### 3.3 Llenado de Metas de Ventas
+### 3.3 Sales Targets Population
 
 Script: `dw/LlenadoMetaVentas.sql`.
 
-- Calcula metas mensuales por combinación `IdProducto`–`IdCliente`–`Año`–`Mes`.
-- Fórmula base: meta ≈ 80% del promedio histórico de ventas reales de esa combinación, con un factor de variabilidad 0.9‑1.1.
-- Se limita a los primeros 50 productos y 50 clientes para mantener el volumen manejable.
+- Computes monthly targets per `IdProducto`–`IdCliente`–`Year`–`Month`.
+- Base formula: target ≈ 80% of historical average sales for that combination, with a variability factor of 0.9–1.1.
+- Restricted to the first 50 products and 50 customers to keep volume manageable.
 
-### 3.4 Razonamiento de Diseño
+### 3.4 Design Rationale
 
-- Modelo en estrella para optimizar consultas analíticas (scans sobre `FactVentas` + joins a dimensiones denormalizadas).
-- Desnormalización controlada en dimensiones (p.ej. `Pais`, `Categoria`) para simplificar reporting.
-- Tabla `Equivalencias` permite integrar SKUs de MongoDB, SQL Server, MySQL y Supabase.
+- Star schema to optimize analytical queries (scans on `FactVentas` plus joins to denormalized dimensions).
+- Controlled denormalization in dimensions (e.g., `Pais`, `Categoria`) to simplify reporting.
+- `Equivalencias` enables integrating SKUs from MongoDB, SQL Server, MySQL, and Supabase.
 
 ---
 
-## 4. Proceso ETL / ELT
+## 4. ETL / ELT Process
 
 ### 4.1 Extract
 
 - **Supabase/PostgreSQL**
-	- APIs REST de Supabase (`/rest/v1/orden`, `/rest/v1/orden_detalle`, `/rest/v1/producto`) usando `requests`.
-	- Autenticación con `SUPABASE_SERVICE_ROLE_KEY` y control de paginación (`limit`, `offset`).
+	- Uses Supabase REST APIs (`/rest/v1/orden`, `/rest/v1/orden_detalle`, `/rest/v1/producto`) via `requests`.
+	- Authenticated with `SUPABASE_SERVICE_ROLE_KEY` and paginated using `limit`/`offset`.
 
 - **SQL Server** (`sql server/ETL_SQLSERVER_TO_DW.py`)
-	- Conexión vía `pyodbc` usando parámetros de `env.txt`.
-	- Lector de tablas `Cliente`, `Producto`, `Orden`, `OrdenDetalle` en `ventas_ms`.
+	- Connects via `pyodbc` using parameters from `env.txt`.
+	- Reads `Cliente`, `Producto`, `Orden`, and `OrdenDetalle` from `ventas_ms`.
 
 - **MySQL** (`mysql/ETL_MYSQL_TO_DW.py`)
-	- Conexión via `mysql-connector` o similar (definido en `requirements_mysql.txt`).
+	- Connects via `mysql-connector` (or equivalent, defined in `requirements_mysql.txt`).
 
 - **MongoDB** (`mongoDB/backend/data/etl.py`)
-	- Lectura desde colecciones Mongo; normalización de documentos a registros tabulares.
+	- Reads from Mongo collections and normalizes documents into tabular records.
 
 - **Neo4j** (`neo4j/ETL_NEO4J.py`)
-	- Conexión mediante `neo4j` driver.
-	- Consultas Cypher para obtener patrones cliente‑producto‑orden.
+	- Uses the `neo4j` driver.
+	- Executes Cypher queries to retrieve customer–product–order patterns.
 
 ### 4.2 Transform
 
-Las transformaciones siguen estos principios:
+Transformations follow these principles:
 
-- Limpieza y tipado:
-	- Conversión de fechas a tipos `DATE`/`DATETIME` estándar.
-	- Normalización de monedas (uso posterior de tipo de cambio BCCR).
-- Validaciones:
-	- Filtrado de filas con cantidades negativas o nulas.
-	- Verificación de claves obligatorias (cliente, producto, fecha).
-- Enriquecimiento:
-	- Incorporación de `TipoCambio` desde `DimTiempo`.
-	- Cálculo de `TotalVentas` = `Cantidad * Precio` cuando aplica.
-- Integración de SKUs:
-	- Uso de la tabla `Equivalencias` para mapear códigos entre sistemas.
+- Cleaning & typing:
+	- Converting dates to standard `DATE`/`DATETIME` types.
+	- Normalizing currencies (with FX from BCCR used later in the flow).
+- Validation:
+	- Filtering out rows with negative or null quantities.
+	- Enforcing mandatory keys (customer, product, date).
+- Enrichment:
+	- Joining `DimTiempo` to attach `TipoCambio`.
+	- Computing `TotalVentas = Cantidad * Precio` when appropriate.
+- SKU integration:
+	- Using `Equivalencias` to map codes across systems.
 
-Las transformaciones se implementan principalmente en Python utilizando `pandas` y SQL nativo cuando corresponde.
+Most transformations are implemented in Python using `pandas`, combined with native SQL when it is more efficient.
 
 ### 4.3 Load
 
-- Carga en `DW_VENTAS` mediante inserciones batch hacia:
+- Loading into `DW_VENTAS` using batch inserts into:
 	- `DimCliente`, `DimProducto`, `DimCanal`, `DimTiempo`.
-	- `FactVentas` y `MetaVentas`.
-- Consideraciones de performance:
-	- Uso de inserts por lotes (batch) en lugar de inserts fila por fila.
-	- Índices creados después de la carga masiva cuando aplica.
-- Manejo de duplicados:
-	- Deduplicación basada en llaves de negocio (cliente+email, producto+sku, fecha+orden).
-	- Uso de `Equivalencias` para asegurar mapeos 1‑a‑1 entre códigos.
+	- `FactVentas` and `MetaVentas`.
+- Performance considerations:
+	- Batch inserts instead of row‑by‑row inserts.
+	- Indexes created or rebuilt after large bulk loads where appropriate.
+- Duplicates handling:
+	- De‑duplication based on business keys (customer+email, product+sku, date+order).
+	- `Equivalencias` ensures 1‑to‑1 mappings between codes.
 
-### 4.4 Job de Tipo de Cambio (BCCR)
+### 4.4 FX Job (BCCR)
 
 Script: `dw/job/bccr_exchange_rate.py`.
 
-- Descarga tipos de cambio diarios para los últimos 3 años desde BCCR.
-- Inserta o actualiza el campo `TipoCambio` en `DimTiempo`.
-- Ofrece comandos para scheduling y limpieza de job:
+- Downloads daily FX rates for the last 3 years from BCCR.
+- Inserts or updates `TipoCambio` in `DimTiempo`.
+- Provides commands for scheduling and removing the job:
 
 ```powershell
-# Instalar dependencias (ejemplo genérico)
+# Install dependencies (generic example)
 python -m venv .venv
-.\.venv\Scripts\activate
+\.venv\Scripts\activate
 pip install requests pyodbc python-dotenv
 
-# Poblar tipos de cambio
+# Populate FX data
 python bccr_exchange_rate.py populate
 
-# Programar job diario (ej. 05:00)
+# Schedule daily job (e.g., 05:00)
 python bccr_exchange_rate.py scheduler 05:00
 
-# Eliminar job
+# Remove job
 python bccr_exchange_rate.py remove-scheduler
 ```
 
 ---
 
-## 5. Ciencia de Datos: Apriori y Reglas de Asociación
+## 5. Data Science: Apriori and Association Rules
 
-Scripts clave en `supabase/backEnd/db/apriori`:
+Key scripts under `supabase/backEnd/db/apriori`:
 
-- `apriori.py`: pipeline principal.
-- `insertapriori.py`: persistencia en tablas Apriori de Supabase.
-- `generarevision.py`: generación de reporte legible de reglas (`reglas_revision.txt`).
+- `apriori.py`: main pipeline.
+- `insertapriori.py`: persists results into Supabase Apriori tables.
+- `generarevision.py`: generates a human‑readable report (`reglas_revision.txt`).
 
-### 5.1 Dataset de Ventas
+### 5.1 Sales Dataset
 
-- Origen: tablas `orden` y `orden_detalle` de Supabase/PostgreSQL.
-- Cada transacción se modela como un conjunto de productos por `orden_id`.
+- Source: `orden` and `orden_detalle` tables in Supabase/PostgreSQL.
+- Each transaction is modeled as a set of products per `orden_id`.
 
-### 5.2 Preparación de Datos
+### 5.2 Data Preparation
 
-1. Extracción via REST de `orden`, `orden_detalle` y `producto`.
-2. Construcción de una tabla con columnas `transaction_id` y `item` (`producto_id`).
-3. Transformación a formato **one‑hot encoding**: matriz transacción × producto con valores booleanos.
+1. Extract `orden`, `orden_detalle`, and `producto` via REST.
+2. Build a table with `transaction_id` and `item` (`producto_id`).
+3. Transform into **one‑hot encoding**: transaction × product matrix with boolean values.
 
-### 5.3 Cálculo de Métricas
+### 5.3 Metrics
 
-Se utilizan las funciones de `mlxtend.frequent_patterns`:
+Using `mlxtend.frequent_patterns`:
 
-- **Soporte ($support$)**
-	- $support(X) = \frac{\text{# transacciones que contienen } X}{\text{# transacciones totales}}$.
-- **Confianza ($confidence$)**
+- **Support ($support$)**
+	- $support(X) = \frac{\text{# transactions containing } X}{\text{# total transactions}}$.
+- **Confidence ($confidence$)**
 	- $confidence(X \Rightarrow Y) = \frac{support(X \cup Y)}{support(X)}$.
 - **Lift**
 	- $lift(X \Rightarrow Y) = \frac{confidence(X \Rightarrow Y)}{support(Y)}$.
 
-Parámetros configurados en `apriori.py`:
+Configured parameters in `apriori.py`:
 
-- `MIN_SUPPORT = 0.015` (1.5% de las transacciones).  
+- `MIN_SUPPORT = 0.015` (1.5% of transactions).  
 - `MIN_CONFIDENCE = 0.3`.
 
-### 5.4 Algoritmo y Optimizaciones
+### 5.4 Algorithm & Optimizations
 
-- Uso del algoritmo **Apriori** de `mlxtend` sobre la matriz one‑hot.
-- Post-procesamiento para:
-	- Agregar columna `length` (tamaño del itemset) para priorizar itemsets más largos.
-	- Mapear IDs de producto a nombres y SKUs para reportes legibles.
-	- Deduplicar reglas por par exacto (antecedentes, consecuentes), quedándose con la regla de mejor calidad.
-	- Expandir cada regla en pares atómicos antecedente → consecuente para facilitar el consumo en frontend.
+- Uses the **Apriori** algorithm from `mlxtend` on the one‑hot matrix.
+- Post‑processing includes:
+	- Adding a `length` column (itemset size) to prioritize larger itemsets.
+	- Mapping product IDs to names and SKUs for readable reports.
+	- Deduplicating rules by exact (antecedent, consequent) pair, keeping the best rule.
+	- Expanding each rule into atomic antecedent → consequent pairs to simplify frontend consumption.
 
-### 5.5 Persistencia de Reglas
+### 5.5 Rule Persistence
 
-- Las reglas se guardan en las tablas `itemset`, `itemset_item`, `association_rule`, `rule_antecedente`, `rule_consecuente` en Supabase.
-- `association_rule.active` permite soft delete; las reglas inactivas se excluyen de las recomendaciones.
+- Rules are stored in `itemset`, `itemset_item`, `association_rule`, `rule_antecedente`, `rule_consecuente` in Supabase.
+- `association_rule.active` enables soft deletes; inactive rules are excluded from recommendations.
 
-### 5.6 Casos de Uso de Negocio
+### 5.6 Business Use Cases
 
-- **Recomendaciones de productos**: "Clientes que compraron X también compraron Y".
-- **Cross‑selling y up‑selling** en el frontend (sugerencias en la vista de orden o detalle de producto).
-- **Optimización de surtido**: análisis de combinaciones de productos frecuentemente adquiridos.
-
----
-
-## 6. Dashboards en Power BI
-
-Sobre el DW `DW_VENTAS` se propone un modelo conectado vía SQL Server connector con las siguientes vistas:
-
-- **Métricas principales:**
-	- Ventas totales (`TotalVentas`) por día, mes, año.
-	- Cantidad de unidades vendidas (`Cantidad`).
-	- Cumplimiento de metas vs `MetaVentas.MetaUSD`.
-
-- **KPIs sugeridos:**
-	- % Cumplimiento de Meta por cliente, producto y canal.
-	- Ticket promedio.
-	- Mix de productos por segmento.
-
-- **Visualizaciones típicas:**
-	- Series de tiempo por `DimTiempo`.
-	- Segmentaciones por `DimCliente.Pais`, `DimProducto.Categoria`, `DimCanal.Nombre`.
-	- Tableros comparativos meta vs real (semáforos por color).
-
-**Uso del archivo PBIX (no incluido en el repo):**
-
-1. Abrir Power BI Desktop.
-2. Conectar a SQL Server → base `DW_VENTAS`.
-3. Importar tablas `FactVentas`, `DimTiempo`, `DimCliente`, `DimProducto`, `DimCanal`, `MetaVentas`.
-4. Crear relaciones según las FKs ya definidas en el DW.
-5. Publicar el reporte o compartir el archivo `.pbix` dentro de la organización.
+- **Product recommendations**: "Customers who bought X also bought Y".
+- **Cross‑selling and up‑selling** in the frontend (suggestions on order and product detail views).
+- **Assortment optimization**: analysis of frequently co‑purchased product combinations.
 
 ---
 
-## 7. Páginas Web e Interfaces
+## 6. Power BI Dashboards
+
+On top of `DW_VENTAS`, a Power BI model is proposed using the SQL Server connector:
+
+- **Core Metrics:**
+	- Total sales (`TotalVentas`) by day, month, and year.
+	- Units sold (`Cantidad`).
+	- Target attainment vs. `MetaVentas.MetaUSD`.
+
+- **Suggested KPIs:**
+	- % Target attainment by customer, product, and channel.
+	- Average ticket.
+	- Product mix by segment.
+
+- **Typical Visuals:**
+	- Time series using `DimTiempo`.
+	- Slicers by `DimCliente.Pais`, `DimProducto.Categoria`, `DimCanal.Nombre`.
+	- Target vs. actual dashboards (traffic‑light style cards).
+
+**Using the PBIX file (not included in this repo):**
+
+1. Open Power BI Desktop.
+2. Connect to SQL Server → database `DW_VENTAS`.
+3. Import `FactVentas`, `DimTiempo`, `DimCliente`, `DimProducto`, `DimCanal`, `MetaVentas`.
+4. Create relationships according to DW foreign keys.
+5. Publish the report or share the `.pbix` file within the organization.
+
+---
+
+## 7. Web Pages and Interfaces
 
 ### 7.1 Supabase Frontend (`supabase/frontend`)
 
 - **Stack:** React + Vite, `@supabase/supabase-js`.
-- **Funcionalidad principal:**
-	- Listado y detalle de **clientes**, **productos** y **órdenes**.
-	- Módulo de **recomendaciones**, consumiendo reglas en `association_rule` filtradas por `active = true`.
-- **Flujo de usuario:**
-	1. El usuario accede a la home (`App.jsx`) y elige vista (Clientes, Productos, Órdenes).
-	2. Consulta datos directamente en Supabase usando el servicio `src/services/api.js`.
-	3. En vista de producto/orden puede ver productos recomendados basados en reglas Apriori.
+- **Core features:**
+	- List and detail views for **customers**, **products**, and **orders**.
+	- **Recommendations** module consuming `association_rule` filtered by `active = true`.
+- **User flow:**
+	1. User lands on the home page (`App.jsx`) and selects a view (Customers, Products, Orders).
+	2. Data is fetched directly from Supabase using `src/services/api.js`.
+	3. On product/order views, the user sees recommendations based on Apriori rules.
 
 ### 7.2 MongoDB Frontend (`mongoDB/frontend`)
 
-- React + Vite, consume el backend `mongoDB/backend`.
-- Permite navegar por colecciones de clientes, productos y órdenes.
+- React + Vite, consuming `mongoDB/backend`.
+- Allows browsing customer, product, and order collections.
 
 ### 7.3 Neo4j Client (`neo4j/client`)
 
-- React + Vite, consume el backend `neo4j/server`.
-- Expone consultas sobre el grafo de ventas (por ejemplo, productos relacionados a un cliente).
+- React + Vite, consuming `neo4j/server`.
+- Exposes graph‑based queries (e.g., products related to a given customer).
 
-> Nota: Las UIs están diseñadas como herramientas de demostración para presentar la integración de datos más que para uso productivo final.
-
----
-
-## 8. Casos de Uso y Beneficios
-
-**Problema de negocio:**
-
-Empresas de retail o e‑commerce necesitan consolidar datos de ventas dispersos en múltiples sistemas y extraer insights accionables (recomendaciones, análisis de metas, comportamiento de clientes).
-
-**Usuarios objetivo:**
-
-- Analistas de negocio y BI.
-- Equipos de data engineering.
-- Product managers y marketing.
-
-**Beneficios aportados:**
-
-- Vista unificada de ventas multi‑canal en un DW centralizado.
-- Motor de recomendaciones basado en reglas de asociación.
-- Infraestructura reutilizable para integrar nuevas fuentes de datos.
-- Base sólida para desarrollar dashboards de performance comercial.
-
-**Justificación de la arquitectura:**
-
-- Separación clara entre OLTP y OLAP mediante un DW dimensional.
-- Uso de tecnologías estándar de la industria (SQL Server, PostgreSQL, Python, React, Power BI).
-- Capacidad de escalar a nuevos orígenes (MongoDB, Neo4j) gracias a la tabla de equivalencias y procesos ETL modulares.
+> Note: These UIs are designed as demonstration tools to showcase data integration rather than as final production‑grade applications.
 
 ---
 
-## 9. Guía de Instalación y Ejecución
+## 8. Use Cases and Benefits
 
-### 9.1 Requisitos Generales
+**Business Problem:**
 
-- **Sistema operativo:** Windows 10/11 (probado) o equivalente.
-- **Python:** 3.10+ recomendado.
+Retail and e‑commerce companies often need to consolidate sales data spread across multiple systems and derive actionable insights (recommendations, target analysis, customer behavior).
+
+**Target Users:**
+
+- Business and BI analysts.
+- Data engineering teams.
+- Product managers and marketing.
+
+**Value Proposition:**
+
+- Unified, multi‑channel view of sales in a central DW.
+- Recommendation engine based on association rules.
+- Reusable infrastructure for integrating new data sources.
+- Solid foundation for building performance dashboards and advanced analytics.
+
+**Architecture Justification:**
+
+- Clear separation between OLTP and OLAP using a dimensional DW.
+- Industry‑standard technologies (SQL Server, PostgreSQL, Python, React, Power BI).
+- Easy to onboard new sources (MongoDB, Neo4j) via the equivalence table and modular ETLs.
+
+---
+
+## 9. Installation and Execution Guide
+
+### 9.1 General Requirements
+
+- **OS:** Windows 10/11 (validated) or equivalent.
+- **Python:** 3.10+ recommended.
 - **Node.js:** v18+.
-- **SQL Server local** con capacidad para crear `DW_VENTAS` y `ventas_ms`.
-- **MySQL** (opcional) para `sales_mysql`.
-- **MongoDB** (opcional) y **Neo4j Desktop** (opcional).
+- **SQL Server** with ability to create `DW_VENTAS` and `ventas_ms`.
+- **MySQL** (optional) for `sales_mysql`.
+- **MongoDB** (optional) and **Neo4j Desktop** (optional).
 
-Se recomienda trabajar dentro de un entorno virtual Python en la raíz:
+Recommended Python virtual environment at the project root:
 
 ```powershell
 cd Data_Enviroment
 python -m venv .venv
-.\.venv\Scripts\activate
+\.venv\Scripts\activate
 ```
 
-### 9.2 Data Warehouse y Job de Tipo de Cambio
+### 9.2 Data Warehouse and FX Job
 
-1. Crear DW en SQL Server ejecutando `dw/ScriptCreaciónDW.sql`.
-2. Opcional: llenar metas de ventas ejecutando `dw/LlenadoMetaVentas.sql`.
-3. Configurar `.env` para el job BCCR (ver `dw/job/env.txt` como referencia).
-4. Instalar dependencias y ejecutar `dw/job/bccr_exchange_rate.py` según la sección de ETL.
+1. Create the DW in SQL Server by running `dw/ScriptCreaciónDW.sql`.
+2. Optionally populate sales targets via `dw/LlenadoMetaVentas.sql`.
+3. Configure `.env` for the BCCR job (see `dw/job/env.txt` as reference).
+4. Install dependencies and run `dw/job/bccr_exchange_rate.py` as described in the ETL section.
 
-### 9.3 SQL Server – Base `ventas_ms`
+### 9.3 SQL Server – `ventas_ms`
 
 ```powershell
 cd "sql server"
 python -m pip install -r .\requirements.txt
 python .\populate_db.py --server localhost --database ventas_ms --trusted
 
-# Ejecutar ETL hacia DW
+# Run ETL into the DW
 python .\ETL_SQLSERVER_TO_DW.py
 ```
 
-### 9.4 MySQL – Base `sales_mysql`
+### 9.4 MySQL – `sales_mysql`
 
 ```powershell
 cd mysql
 python -m pip install -r .\requirements_mysql.txt
 python .\populate_mysql.py --host localhost --port 3306 --database sales_mysql --user root --password "1234"
 
-# Ejecutar ETL hacia DW
+# Run ETL into the DW
 python .\ETL_MYSQL_TO_DW.py
 ```
 
@@ -464,9 +467,9 @@ npm run dev
 
 ### 9.6 Neo4j
 
-1. Crear base `ventas` en Neo4j.
-2. Ejecutar `llenado.cypher` sobre la base `ventas`.
-3. Configurar `.env` en `neo4j/server` y raíz del proyecto Neo4j.
+1. Create database `ventas` in Neo4j.
+2. Run `llenado.cypher` against the `ventas` database.
+3. Configure `.env` under `neo4j/server` and at the Neo4j project root.
 
 ```powershell
 cd neo4j
@@ -482,9 +485,9 @@ npm install
 npm run dev
 ```
 
-### 9.7 Supabase – Backend Apriori y Frontend
+### 9.7 Supabase – Apriori Backend and Frontend
 
-**Backend Apriori:**
+**Apriori Backend:**
 
 ```powershell
 cd supabase\backEnd\db\apriori
@@ -492,7 +495,7 @@ python .\apriori.py
 python .\generarevision.py
 ```
 
-Requiere `supabase/backEnd/.env.local` con:
+Requires `supabase/backEnd/.env.local`:
 
 ```env
 SUPABASE_URL=...
@@ -505,7 +508,7 @@ MSSQL_PASSWORD=...
 MSSQL_DRIVER=ODBC Driver 17 for SQL Server
 ```
 
-**Frontend Supabase:**
+**Supabase Frontend:**
 
 ```powershell
 cd supabase\frontend
@@ -513,7 +516,7 @@ npm install
 npm run dev
 ```
 
-Requiere `supabase/frontend/.env.local` con:
+Requires `supabase/frontend/.env.local`:
 
 ```env
 VITE_SUPABASE_URL=...
@@ -522,28 +525,28 @@ VITE_SUPABASE_ANON_KEY=...
 
 ### 9.8 Power BI
 
-1. Confirmar que `DW_VENTAS` está poblada.
-2. Abrir Power BI Desktop → Obtener datos → SQL Server.
-3. Conectarse a la instancia de SQL Server y seleccionar la BD `DW_VENTAS`.
-4. Cargar tablas dimensionales y de hechos y construir el modelo.
+1. Make sure `DW_VENTAS` is populated.
+2. Open Power BI Desktop → Get data → SQL Server.
+3. Connect to the SQL Server instance and select `DW_VENTAS`.
+4. Load dimensional and fact tables and build the model.
 
 ---
 
-## 10. Tecnologías Utilizadas
+## 10. Technologies
 
-### Lenguajes
+### Languages
 
-- Python (ETL, Apriori, utilidades).
+- Python (ETL, Apriori, utilities).
 - SQL (PostgreSQL, T‑SQL, MySQL).
 - JavaScript / TypeScript (Node.js, React, Vite).
 
-### Frameworks y Librerías
+### Frameworks & Libraries
 
 - **Backend:** Node.js, Express, Supabase (PostgREST), Neo4j driver.
 - **Frontend:** React, Vite, `@supabase/supabase-js`.
 - **Data Engineering / Science:** `pandas`, `mlxtend`, `requests`, `python-dotenv`, `pyodbc`.
 
-### Bases de Datos
+### Databases
 
 - PostgreSQL (Supabase).
 - SQL Server (`ventas_ms`, `DW_VENTAS`).
@@ -551,7 +554,7 @@ VITE_SUPABASE_ANON_KEY=...
 - MongoDB.
 - Neo4j.
 
-### BI y Herramientas
+### BI & Tools
 
 - Power BI Desktop.
 - Neo4j Desktop.
@@ -559,4 +562,4 @@ VITE_SUPABASE_ANON_KEY=...
 
 ---
 
-Este repositorio está diseñado para reflejar el trabajo de un equipo de ingeniería de datos profesional: separación clara de capas, documentación de ETLs, modelo dimensional explícito y una integración end‑to‑end lista para demo técnica o revisión académica.
+This repository is designed to reflect the work of a professional data engineering team: clear separation of layers, documented ETL pipelines, an explicit dimensional model, and an end‑to‑end integration ready for technical demos or academic review.
