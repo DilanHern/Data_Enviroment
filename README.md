@@ -565,8 +565,7 @@ VITE_SUPABASE_ANON_KEY=...
 
 ---
 
-<<<<<<< HEAD
+
 This repository is designed to reflect the work of a professional data engineering team: clear separation of layers, documented ETL pipelines, an explicit dimensional model, and an end‑to‑end integration ready for technical demos or academic review.
 =======
 Este repositorio está diseñado para reflejar el trabajo de un equipo de ingeniería de datos profesional: separación clara de capas, documentación de ETLs, modelo dimensional explícito y una integración end‑to‑end lista para demo técnica o revisión académica.
->>>>>>> 493f652826bb3d822495b952cef7073499cd6b0a
