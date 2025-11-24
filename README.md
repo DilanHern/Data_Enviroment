@@ -281,9 +281,15 @@ Key scripts under `supabase/backEnd/db/apriori`:
 
 Using `mlxtend.frequent_patterns`:
 
+<<<<<<< HEAD
 - **Support ($support$)**
 	- $support(X) = \frac{\text{# transactions containing } X}{\text{# total transactions}}$.
 - **Confidence ($confidence$)**
+=======
+- **Soporte ($support$)**
+	- $support(X) = \frac{\text{transacciones que contienen X}}{\text{transacciones totales}}$
+- **Confianza ($confidence$)**
+>>>>>>> 493f652826bb3d822495b952cef7073499cd6b0a
 	- $confidence(X \Rightarrow Y) = \frac{support(X \cup Y)}{support(X)}$.
 - **Lift**
 	- $lift(X \Rightarrow Y) = \frac{confidence(X \Rightarrow Y)}{support(Y)}$.
@@ -562,4 +568,8 @@ VITE_SUPABASE_ANON_KEY=...
 
 ---
 
+<<<<<<< HEAD
 This repository is designed to reflect the work of a professional data engineering team: clear separation of layers, documented ETL pipelines, an explicit dimensional model, and an end‑to‑end integration ready for technical demos or academic review.
+=======
+Este repositorio está diseñado para reflejar el trabajo de un equipo de ingeniería de datos profesional: separación clara de capas, documentación de ETLs, modelo dimensional explícito y una integración end‑to‑end lista para demo técnica o revisión académica.
+>>>>>>> 493f652826bb3d822495b952cef7073499cd6b0a
