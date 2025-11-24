@@ -279,7 +279,7 @@ Scripts clave en `supabase/backEnd/db/apriori`:
 Se utilizan las funciones de `mlxtend.frequent_patterns`:
 
 - **Soporte ($support$)**
-	- $support(X) = \frac{\text{# transacciones que contienen } X}{\text{# transacciones totales}}$.
+	- $support(X) = \frac{\text{\# transacciones que contienen } X}{\text{# transacciones totales}}$.
 - **Confianza ($confidence$)**
 	- $confidence(X \Rightarrow Y) = \frac{support(X \cup Y)}{support(X)}$.
 - **Lift**
