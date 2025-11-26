@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { productosApi } from '../services/api'
-import { Edit, Trash2, Plus } from 'lucide-react'
+import { Edit, Trash2, Plus, Search } from 'lucide-react'
 
 function ProductoForm({ producto, onSave, onCancel }) {
   const [formData, setFormData] = useState({
@@ -126,6 +126,7 @@ function ProductosPage() {
   const [error, setError] = useState('')
   const [showForm, setShowForm] = useState(false)
   const [editingProducto, setEditingProducto] = useState(null)
+  const [searchTerm, setSearchTerm] = useState('')
 
   useEffect(() => {
     loadProductos()
@@ -182,6 +183,15 @@ function ProductosPage() {
     setEditingProducto(null)
   }
 
+  // Filtrar productos basado en el término de búsqueda
+  const filteredProductos = productos.filter(producto =>
+    producto.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    producto.codigo_mongo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    producto.categoria?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    producto.equivalencias?.sku?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    producto.equivalencias?.codigo_alt?.toLowerCase().includes(searchTerm.toLowerCase())
+  )
+
   if (loading) return <div className="loading">Cargando productos...</div>
 
   return (
@@ -201,6 +211,69 @@ function ProductosPage() {
             </button>
           </div>
           
+          {/* Barra de búsqueda */}
+          <div style={{ 
+            position: 'relative', 
+            marginBottom: '1rem',
+            maxWidth: '400px'
+          }}>
+            <Search 
+              size={20} 
+              style={{
+                position: 'absolute',
+                left: '12px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                color: '#666',
+                pointerEvents: 'none'
+              }}
+            />
+            <input
+              type="text"
+              placeholder="Buscar por nombre, código, categoría o SKU..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '12px 12px 12px 45px',
+                border: '1px solid #ddd',
+                borderRadius: '6px',
+                fontSize: '14px',
+                outline: 'none',
+                transition: 'border-color 0.2s ease'
+              }}
+              onFocus={(e) => e.target.style.borderColor = '#007bff'}
+              onBlur={(e) => e.target.style.borderColor = '#ddd'}
+            />
+          </div>
+
+          {/* Contador de resultados */}
+          <div style={{ 
+            marginBottom: '1rem', 
+            fontSize: '14px', 
+            color: '#666' 
+          }}>
+            {searchTerm && (
+              <span>
+                Mostrando {filteredProductos.length} de {productos.length} productos
+                <button
+                  onClick={() => setSearchTerm('')}
+                  style={{
+                    marginLeft: '10px',
+                    background: 'none',
+                    border: 'none',
+                    color: '#007bff',
+                    cursor: 'pointer',
+                    textDecoration: 'underline',
+                    fontSize: '14px'
+                  }}
+                >
+                  Limpiar búsqueda
+                </button>
+              </span>
+            )}
+          </div>
+          
           <table className="table">
             <thead>
               <tr>
@@ -213,30 +286,46 @@ function ProductosPage() {
               </tr>
             </thead>
             <tbody>
-              {productos.map(producto => (
-                <tr key={producto._id}>
-                  <td>{producto.codigo_mongo}</td>
-                  <td>{producto.nombre}</td>
-                  <td>{producto.categoria}</td>
-                  <td>{producto.equivalencias?.sku || '-'}</td>
-                  <td>{producto.equivalencias?.codigo_alt || '-'}</td>
-                  <td>
-                    <button 
-                      className="btn btn-secondary" 
-                      onClick={() => handleEdit(producto)}
-                      style={{ marginRight: '0.5rem' }}
-                    >
-                      <Edit size={16} />
-                    </button>
-                    <button 
-                      className="btn btn-danger" 
-                      onClick={() => handleDelete(producto._id)}
-                    >
-                      <Trash2 size={16} />
-                    </button>
+              {filteredProductos.length > 0 ? (
+                filteredProductos.map(producto => (
+                  <tr key={producto._id}>
+                    <td>{producto.codigo_mongo}</td>
+                    <td>{producto.nombre}</td>
+                    <td>{producto.categoria}</td>
+                    <td>{producto.equivalencias?.sku || '-'}</td>
+                    <td>{producto.equivalencias?.codigo_alt || '-'}</td>
+                    <td>
+                      <button 
+                        className="btn btn-secondary" 
+                        onClick={() => handleEdit(producto)}
+                        style={{ marginRight: '0.5rem' }}
+                      >
+                        <Edit size={16} />
+                      </button>
+                      <button 
+                        className="btn btn-danger" 
+                        onClick={() => handleDelete(producto._id)}
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="6" style={{ 
+                    textAlign: 'center', 
+                    padding: '2rem',
+                    color: '#666',
+                    fontStyle: 'italic'
+                  }}>
+                    {searchTerm 
+                      ? `No se encontraron productos que coincidan con "${searchTerm}"`
+                      : 'No hay productos registrados'
+                    }
                   </td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </table>
         </div>

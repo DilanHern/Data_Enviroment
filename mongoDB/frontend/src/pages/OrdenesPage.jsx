@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { ordenesApi, clientesApi, productosApi } from '../services/api'
-import { Edit, Trash2, Plus, Minus } from 'lucide-react'
+import { Edit, Trash2, Plus, Minus, Search } from 'lucide-react'
 
 function OrdenForm({ orden, onSave, onCancel }) {
   const [formData, setFormData] = useState({
@@ -257,6 +257,7 @@ function OrdenesPage() {
   const [error, setError] = useState('')
   const [showForm, setShowForm] = useState(false)
   const [editingOrden, setEditingOrden] = useState(null)
+  const [searchTerm, setSearchTerm] = useState('')
 
   useEffect(() => {
     loadOrdenes()
@@ -328,6 +329,22 @@ function OrdenesPage() {
     setEditingOrden(null)
   }
 
+  // Filtrar órdenes basado en el término de búsqueda
+  const filteredOrdenes = ordenes.filter(orden => {
+    const cliente = clientes.find(c => c._id === orden.cliente_id)
+    const clienteNombre = cliente?.nombre?.toLowerCase() || ''
+    const fechaStr = new Date(orden.fecha).toLocaleDateString().toLowerCase()
+    
+    return (
+      clienteNombre.includes(searchTerm.toLowerCase()) ||
+      orden.canal?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      orden.moneda?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      fechaStr.includes(searchTerm.toLowerCase()) ||
+      orden.total?.toString().includes(searchTerm) ||
+      orden.metadatos?.cupon?.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+  })
+
   if (loading) return <div className="loading">Cargando órdenes...</div>
 
   return (
@@ -347,6 +364,69 @@ function OrdenesPage() {
             </button>
           </div>
           
+          {/* Barra de búsqueda */}
+          <div style={{ 
+            position: 'relative', 
+            marginBottom: '1rem',
+            maxWidth: '400px'
+          }}>
+            <Search 
+              size={20} 
+              style={{
+                position: 'absolute',
+                left: '12px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                color: '#666',
+                pointerEvents: 'none'
+              }}
+            />
+            <input
+              type="text"
+              placeholder="Buscar por cliente, canal, fecha o total..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '12px 12px 12px 45px',
+                border: '1px solid #ddd',
+                borderRadius: '6px',
+                fontSize: '14px',
+                outline: 'none',
+                transition: 'border-color 0.2s ease'
+              }}
+              onFocus={(e) => e.target.style.borderColor = '#007bff'}
+              onBlur={(e) => e.target.style.borderColor = '#ddd'}
+            />
+          </div>
+
+          {/* Contador de resultados */}
+          <div style={{ 
+            marginBottom: '1rem', 
+            fontSize: '14px', 
+            color: '#666' 
+          }}>
+            {searchTerm && (
+              <span>
+                Mostrando {filteredOrdenes.length} de {ordenes.length} órdenes
+                <button
+                  onClick={() => setSearchTerm('')}
+                  style={{
+                    marginLeft: '10px',
+                    background: 'none',
+                    border: 'none',
+                    color: '#007bff',
+                    cursor: 'pointer',
+                    textDecoration: 'underline',
+                    fontSize: '14px'
+                  }}
+                >
+                  Limpiar búsqueda
+                </button>
+              </span>
+            )}
+          </div>
+          
           <table className="table">
             <thead>
               <tr>
@@ -360,31 +440,47 @@ function OrdenesPage() {
               </tr>
             </thead>
             <tbody>
-              {ordenes.map(orden => (
-                <tr key={orden._id}>
-                  <td>{getClienteNombre(orden.cliente_id)}</td>
-                  <td>{new Date(orden.fecha).toLocaleDateString()}</td>
-                  <td>{orden.canal}</td>
-                  <td>{orden.items?.length || 0}</td>
-                  <td>₡{orden.total?.toLocaleString()}</td>
-                  <td>{orden.metadatos?.cupon || '-'}</td>
-                  <td>
-                    <button 
-                      className="btn btn-secondary" 
-                      onClick={() => handleEdit(orden)}
-                      style={{ marginRight: '0.5rem' }}
-                    >
-                      <Edit size={16} />
-                    </button>
-                    <button 
-                      className="btn btn-danger" 
-                      onClick={() => handleDelete(orden._id)}
-                    >
-                      <Trash2 size={16} />
-                    </button>
+              {filteredOrdenes.length > 0 ? (
+                filteredOrdenes.map(orden => (
+                  <tr key={orden._id}>
+                    <td>{getClienteNombre(orden.cliente_id)}</td>
+                    <td>{new Date(orden.fecha).toLocaleDateString()}</td>
+                    <td>{orden.canal}</td>
+                    <td>{orden.items?.length || 0}</td>
+                    <td>₡{orden.total?.toLocaleString()}</td>
+                    <td>{orden.metadatos?.cupon || '-'}</td>
+                    <td>
+                      <button 
+                        className="btn btn-secondary" 
+                        onClick={() => handleEdit(orden)}
+                        style={{ marginRight: '0.5rem' }}
+                      >
+                        <Edit size={16} />
+                      </button>
+                      <button 
+                        className="btn btn-danger" 
+                        onClick={() => handleDelete(orden._id)}
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="7" style={{ 
+                    textAlign: 'center', 
+                    padding: '2rem',
+                    color: '#666',
+                    fontStyle: 'italic'
+                  }}>
+                    {searchTerm 
+                      ? `No se encontraron órdenes que coincidan con "${searchTerm}"`
+                      : 'No hay órdenes registradas'
+                    }
                   </td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </table>
         </div>
