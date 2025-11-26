@@ -36,7 +36,7 @@ function App() {
       <div className="App">
         <header className="header">
           <div className="container">
-            <h1>CR E-commerce Admin (MongoDB)</h1>
+            <h1>CR E-commerce Admin (Neo4j)</h1>
             <Navigation />
           </div>
         </header>
