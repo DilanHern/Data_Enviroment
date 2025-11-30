@@ -345,6 +345,12 @@ On top of `DW_VENTAS`, a Power BI model is proposed using the SQL Server connect
 4. Create relationships according to DW foreign keys.
 5. Publish the report or share the `.pbix` file within the organization.
 
+![WhatsApp Image 2025-11-24 at 17 17 11_7b860e9d](https://github.com/user-attachments/assets/61d1574d-86db-4f8f-9709-5d059dfcbf65)
+
+![WhatsApp Image 2025-11-24 at 17 17 25_4fcaee40](https://github.com/user-attachments/assets/44cb11e3-eb7c-44b5-8d7d-4d883deec820)
+
+![WhatsApp Image 2025-11-24 at 17 17 36_6935f0dc](https://github.com/user-attachments/assets/f63fb4d1-02b9-4fd8-8101-b3c027bab3a6)
+
 ---
 
 ## 7. Web Pages and Interfaces
