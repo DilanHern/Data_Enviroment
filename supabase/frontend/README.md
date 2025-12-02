@@ -32,6 +32,3 @@ VITE_SUPABASE_ANON_KEY=eyJ...anon-key...
   npm run build
   npm run preview
   ```
-
-**Opcional**
-- Puedo añadir una vista de administrador que muestre reglas inactivas (`association_rule.active`) si lo deseas.
