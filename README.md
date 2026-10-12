@@ -1,9 +1,5 @@
 # Data_Enviroment
 
-End-to-end sales analytics platform that consolidates **five heterogeneous transactional databases** (SQL Server, MySQL, MongoDB, Neo4j and Supabase/PostgreSQL) into a **SQL Server star-schema data warehouse** through Python ETLs, then adds an **Apriori product-recommendation engine** and **Power BI dashboards** on top.
-
-Built as a university final project at the Instituto Tecnológico de Costa Rica (2025) to practice the full data-engineering lifecycle: synthetic data generation, integration of inconsistent sources, dimensional modeling, incremental loading, association-rule mining and BI reporting.
-
 <p>
   <a href="LICENSE"><img src="https://img.shields.io/badge/-MIT%20License-0d1117?style=flat-square&logo=opensourceinitiative&logoColor=3DA639" alt="MIT License"></a>
   <img src="https://img.shields.io/badge/-Completed-0d1117?style=flat-square&logo=data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI%2BPGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iMTAiIGZpbGw9IiMzRkI5NTAiLz48cG9seWxpbmUgcG9pbnRzPSI3IDEyLjUgMTAuNSAxNiAxNyA4LjUiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzBkMTExNyIgc3Ryb2tlLXdpZHRoPSIyLjYiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjwvc3ZnPgo%3D" alt="Status: Completed">
@@ -22,6 +18,10 @@ Built as a university final project at the Instituto Tecnológico de Costa Rica 
   <img src="https://img.shields.io/badge/-Neo4j-0d1117?style=flat-square&logo=neo4j&logoColor=4581C3" alt="Neo4j">
   <img src="https://img.shields.io/badge/-Power%20BI-0d1117?style=flat-square&logo=data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iI0YyQzgxMSI%2BPHJlY3QgeD0iMyIgeT0iMTMiIHdpZHRoPSI1IiBoZWlnaHQ9IjkiIHJ4PSIxLjIiLz48cmVjdCB4PSI5LjUiIHk9IjgiIHdpZHRoPSI1IiBoZWlnaHQ9IjE0IiByeD0iMS4yIi8%2BPHJlY3QgeD0iMTYiIHk9IjIiIHdpZHRoPSI1IiBoZWlnaHQ9IjIwIiByeD0iMS4yIi8%2BPC9zdmc%2BCg%3D%3D" alt="Power BI">
 </p>
+
+End-to-end sales analytics platform that consolidates **five heterogeneous transactional databases** (SQL Server, MySQL, MongoDB, Neo4j and Supabase/PostgreSQL) into a **SQL Server star-schema data warehouse** through Python ETLs, then adds an **Apriori product-recommendation engine** and **Power BI dashboards** on top.
+
+Built as a university final project at the Instituto Tecnológico de Costa Rica (2025) to practice the full data-engineering lifecycle: synthetic data generation, integration of inconsistent sources, dimensional modeling, incremental loading, association-rule mining and BI reporting.
 
 ![Power BI – Vista General: sales, average ticket, active customers and growth vs previous year](https://github.com/user-attachments/assets/61d1574d-86db-4f8f-9709-5d059dfcbf65)
 
